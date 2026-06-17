@@ -34,39 +34,6 @@ export const dashboardSummary = {
   liveSyncStatus: "Demo dataset active",
 };
 
-export const roleViews: Record<
-  DashboardRole,
-  {
-    label: string;
-    strap: string;
-    focus: string;
-    priority: string;
-    recommendation: string;
-  }
-> = {
-  manager: {
-    label: "Branch manager",
-    strap: "Decision support for profit, stock cover, and supplier timing.",
-    focus: "Margin discipline",
-    priority: "Rebalance working capital into faster accessories and service bundles.",
-    recommendation: "Push a Friday bundle campaign for laptops + accessories before the next replenishment wave.",
-  },
-  analyst: {
-    label: "Business analyst",
-    strap: "Pattern tracking for demand shifts, anomaly detection, and forecast confidence.",
-    focus: "Signal quality",
-    priority: "Demand variance is clustering around premium devices and mid-range chargers.",
-    recommendation: "Audit March-to-May demand spikes and tune reorder weights for phones and power banks.",
-  },
-  operations: {
-    label: "Operations lead",
-    strap: "Execution view for reorder urgency, supplier follow-up, and shelf availability.",
-    focus: "Shelf continuity",
-    priority: "Battery accessories and entry laptops are closest to stock-out this week.",
-    recommendation: "Escalate BlueOrbit Logistics and shift overflow demand to Accra Device Hub for three SKUs.",
-  },
-};
-
 export const salesPerformance = [
   { month: "Jan", revenue: 126000, orders: 318, margin: 22.2, accessories: 22000, devices: 88000, services: 16000 },
   { month: "Feb", revenue: 134800, orders: 341, margin: 22.8, accessories: 23800, devices: 92500, services: 18500 },
