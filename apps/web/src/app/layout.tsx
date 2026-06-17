@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Fraunces, IBM_Plex_Mono, Manrope, Inter } from "next/font/google";
 
 import { cn } from "@_scaffold/ui/lib/utils";
+import { env } from "@_scaffold/env/web";
 
 import "../index.css";
 import Providers from "@/components/providers";
@@ -37,7 +38,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const clerkEnabled =
-    Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) && Boolean(process.env.CLERK_SECRET_KEY);
+    Boolean(env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) && Boolean(process.env.CLERK_SECRET_KEY);
 
   const app = (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
@@ -54,10 +55,10 @@ export default function RootLayout({
       <body className="antialiased selection:bg-foreground selection:text-background">
         {clerkEnabled ? (
           <ClerkProvider
-            signInUrl="/sign-in"
-            signUpUrl="/sign-up"
-            afterSignInUrl="/dashboard"
-            afterSignUpUrl="/dashboard"
+            signInUrl={env.NEXT_PUBLIC_CLERK_SIGN_IN_URL}
+            signUpUrl={env.NEXT_PUBLIC_CLERK_SIGN_UP_URL}
+            signInFallbackRedirectUrl={env.NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL}
+            signUpFallbackRedirectUrl={env.NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL}
           >
             {app}
           </ClerkProvider>

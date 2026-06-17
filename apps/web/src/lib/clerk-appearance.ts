@@ -1,4 +1,7 @@
-import type { Appearance } from "@clerk/nextjs/server";
+type ClerkAppearance = {
+  elements?: Record<string, string | undefined>;
+  variables?: Record<string, string | number | undefined>;
+};
 
 const shared = {
   elements: {
@@ -51,9 +54,9 @@ const shared = {
     // Phone input
     phoneInputBox: "h-9 rounded-md border",
   },
-} satisfies Partial<Appearance>;
+} satisfies Partial<ClerkAppearance>;
 
-export const clerkAppearanceLight: Appearance = {
+export const clerkAppearanceLight: ClerkAppearance = {
   ...shared,
   variables: {
     colorBackground: "#ffffff",
@@ -73,7 +76,7 @@ export const clerkAppearanceLight: Appearance = {
   },
 };
 
-export const clerkAppearanceDark: Appearance = {
+export const clerkAppearanceDark: ClerkAppearance = {
   ...shared,
   variables: {
     colorBackground: "#262626",
