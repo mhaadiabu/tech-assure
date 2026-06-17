@@ -9,6 +9,7 @@ import {
   Building2Icon,
   ChartColumnBigIcon,
 } from "lucide-react";
+import Link from "next/link";
 
 import {
   Sidebar,
@@ -47,7 +48,6 @@ type AppSidebarProps = {
   availableSections: readonly DashboardSection[];
   criticalAlerts: number;
   viewer: DashboardViewer;
-  onSectionChange: (section: DashboardSection) => void;
 };
 
 export default function AppSidebar({
@@ -55,7 +55,6 @@ export default function AppSidebar({
   availableSections,
   criticalAlerts,
   viewer,
-  onSectionChange,
 }: AppSidebarProps) {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
@@ -64,7 +63,6 @@ export default function AppSidebar({
 
   return (
     <Sidebar collapsible="icon" variant="inset">
-      {/* Header — logo only when collapsed, brand + profile when expanded */}
       <SidebarHeader className="overflow-hidden px-2 py-3">
         {collapsed ? (
           <div className="flex h-8 w-8 items-center justify-center">
@@ -92,7 +90,7 @@ export default function AppSidebar({
                   <SidebarMenuItem key={item.id}>
                     <SidebarMenuButton
                       isActive={active}
-                      onClick={() => onSectionChange(item.id)}
+                      render={<Link href={`/dashboard/${item.id}`} />}
                       tooltip={item.label}
                       className={active ? "" : "opacity-40 hover:opacity-100"}
                     >
@@ -112,7 +110,6 @@ export default function AppSidebar({
 
       <SidebarSeparator />
 
-      {/* Footer — stacked when collapsed, row when expanded */}
       <SidebarFooter className="overflow-hidden px-2 py-3">
         {collapsed ? (
           <div className="flex flex-col items-center gap-2">

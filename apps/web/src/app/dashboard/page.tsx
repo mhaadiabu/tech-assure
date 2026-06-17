@@ -1,14 +1,10 @@
 import { redirect } from "next/navigation";
 
-import DashboardRuntime from "@/components/dashboard-runtime";
-import { clerkEnabledServer, getDashboardViewer } from "@/lib/dashboard-auth";
+import { getDashboardViewer } from "@/lib/dashboard-auth";
+import { dashboardSectionsByRole } from "@/lib/techassure-demo-data";
 
-export default async function DashboardPage() {
+export default async function DashboardIndex() {
   const viewer = await getDashboardViewer();
-
-  if (clerkEnabledServer && !viewer.isAuthenticated) {
-    redirect("/");
-  }
-
-  return <DashboardRuntime initialViewer={viewer} />;
+  const defaultSection = dashboardSectionsByRole[viewer.role][0] ?? "overview";
+  redirect(`/dashboard/${defaultSection}`);
 }

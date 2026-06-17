@@ -1,6 +1,27 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+
+import { useUser } from "@clerk/nextjs";
+import { api } from "@_scaffold/backend/convex/_generated/api";
+import type { Doc } from "@_scaffold/backend/convex/_generated/dataModel";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import {
+  ActivityIcon,
+  BellRingIcon,
+  BrainCircuitIcon,
+  CircleAlertIcon,
+  Clock3Icon,
+  GaugeIcon,
+  PackagePlusIcon,
+  PackageSearchIcon,
+  RefreshCcwIcon,
+  ShieldCheckIcon,
+  ShoppingCartIcon,
+  TrendingUpIcon,
+  UsersIcon,
+} from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -12,18 +33,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import {
-  ActivityIcon,
-  BellRingIcon,
-  BrainCircuitIcon,
-  CircleAlertIcon,
-  GaugeIcon,
-  PackageSearchIcon,
-  RefreshCcwIcon,
-  ShieldCheckIcon,
-  ShoppingCartIcon,
-  TrendingUpIcon,
-} from "lucide-react";
+import { toast } from "sonner";
 
 import { Alert, AlertAction, AlertDescription, AlertTitle } from "@_scaffold/ui/components/alert";
 import { Badge } from "@_scaffold/ui/components/badge";
@@ -49,11 +59,22 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@_scaffold/ui/components/empty";
+import { Input } from "@_scaffold/ui/components/input";
+import { Label } from "@_scaffold/ui/components/label";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@_scaffold/ui/components/select";
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
 } from "@_scaffold/ui/components/sidebar";
+import { Skeleton } from "@_scaffold/ui/components/skeleton";
 import {
   Table,
   TableBody,
@@ -62,7 +83,6 @@ import {
   TableHeader,
   TableRow,
 } from "@_scaffold/ui/components/table";
-import { Skeleton } from "@_scaffold/ui/components/skeleton";
 import { cn } from "@_scaffold/ui/lib/utils";
 
 import AppSidebar from "./app-sidebar";
@@ -70,8 +90,8 @@ import {
   dashboardSectionLabels,
   dashboardSectionsByRole,
   demoDashboardSnapshot,
-  type DashboardSnapshot,
   type DashboardSection,
+  type DashboardSnapshot,
 } from "@/lib/techassure-demo-data";
 import type { DashboardViewer } from "@/lib/dashboard-auth";
 
@@ -84,10 +104,6 @@ const currency = new Intl.NumberFormat("en-GH", {
 const percent = new Intl.NumberFormat("en-US", {
   style: "percent",
   maximumFractionDigits: 1,
-});
-
-const number = new Intl.NumberFormat("en-US", {
-  maximumFractionDigits: 0,
 });
 
 const overviewChartConfig = {
@@ -160,6 +176,7 @@ function MetricCard({
   value,
   delta,
   icon: Icon,
+  caption,
 }: {
   title: string;
   value: string;
@@ -590,57 +607,597 @@ function DashboardLoadingState() {
   );
 }
 
-type DashboardShellProps = {
-  viewer: DashboardViewer;
-  snapshot?: DashboardSnapshot;
-  managementPanel?: React.ReactNode;
-  operationsPanel?: React.ReactNode;
-  isLoading?: boolean;
+type UserRow = {
+  _id: Doc<"users">["_id"];
+  name: string;
+  email: string | null;
+  role: DashboardViewer["role"];
+  companyName: string;
 };
 
-export default function DashboardShell({
-  viewer,
-  snapshot,
-  managementPanel,
-  operationsPanel,
-  isLoading = false,
-}: DashboardShellProps) {
-  const availableSections = dashboardSectionsByRole[viewer.role];
-  const [activeSection, setActiveSection] = useState<DashboardSection>(availableSections[0]);
-  const shouldWaitForLiveData = viewer.authMode === "clerk" && viewer.isAuthenticated && isLoading;
-  const liveSnapshot = shouldWaitForLiveData ? undefined : (snapshot ?? demoDashboardSnapshot);
+type OperationsConsoleData = {
+  products: readonly {
+    sku: string;
+    name: string;
+    supplier: string;
+    onHand: number;
+    unitPrice: number;
+    status: "healthy" | "watch" | "critical";
+  }[];
+  suppliers: readonly {
+    name: string;
+    averageLeadDays: number;
+    fillRate: number;
+    reliability: number;
+    openOrders: number;
+    nextDelivery: string;
+  }[];
+  recentActivity: readonly {
+    id: string;
+    kind: "sale" | "receipt" | "supplier";
+    title: string;
+    detail: string;
+    createdAt: string;
+  }[];
+};
 
-  useEffect(() => {
-    if (!availableSections.includes(activeSection)) {
-      setActiveSection(availableSections[0]);
-    }
-  }, [activeSection, availableSections]);
+function RoleManagementPanel({
+  users,
+  onUpdateRole,
+  pendingUserId,
+}: {
+  users: readonly UserRow[] | undefined;
+  onUpdateRole: (userId: Doc<"users">["_id"], role: DashboardViewer["role"]) => void;
+  pendingUserId: Doc<"users">["_id"] | null;
+}) {
+  return (
+    <Card className="border border-border/70 bg-card/92">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-sm">
+          <UsersIcon className="size-4" />
+          Operator roles
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        {!users ? (
+          <>
+            <Skeleton className="h-16 rounded-none" />
+            <Skeleton className="h-16 rounded-none" />
+          </>
+        ) : users.length === 0 ? (
+          <div className="border border-border/70 bg-background/55 p-4 text-sm text-muted-foreground">
+            No authenticated operators synced yet.
+          </div>
+        ) : (
+          users.map((user) => (
+            <div
+              key={user._id}
+              className="flex flex-col gap-3 border border-border/70 bg-background/55 p-4 md:flex-row md:items-center md:justify-between"
+            >
+              <div className="flex flex-col gap-1">
+                <div className="font-medium">{user.name}</div>
+                <div className="text-xs text-muted-foreground">
+                  {user.email ?? "No email"} · {user.companyName}
+                </div>
+              </div>
+              <Select
+                disabled={pendingUserId === user._id}
+                value={user.role}
+                onValueChange={(value) => onUpdateRole(user._id, value as DashboardViewer["role"])}
+              >
+                <SelectTrigger className="w-full md:w-44">
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="manager">Manager</SelectItem>
+                    <SelectItem value="analyst">Analyst</SelectItem>
+                    <SelectItem value="operations">Operations</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+          ))
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
-  const criticalAlerts = useMemo(
-    () => liveSnapshot?.alertFeed.filter((item) => item.severity === "critical").length ?? 0,
-    [liveSnapshot]
+function OperationsConsolePanel({
+  consoleData,
+  pendingAction,
+  onRecordSale,
+  onReceiveStock,
+}: {
+  consoleData: OperationsConsoleData | undefined;
+  pendingAction: "sale" | "receipt" | null;
+  onRecordSale: (args: {
+    sku: string;
+    quantity: number;
+    channel: "retail" | "online" | "service";
+  }) => Promise<void>;
+  onReceiveStock: (args: {
+    sku: string;
+    quantity: number;
+    supplierName: string;
+    leadDays: number;
+    fillRate: number;
+    nextDelivery?: string;
+  }) => Promise<void>;
+}) {
+  const [saleSku, setSaleSku] = useState("");
+  const [saleQty, setSaleQty] = useState("1");
+  const [saleChannel, setSaleChannel] = useState<"retail" | "online" | "service">("retail");
+
+  const [receiptSku, setReceiptSku] = useState("");
+  const [receiptQty, setReceiptQty] = useState("1");
+  const [receiptSupplier, setReceiptSupplier] = useState("");
+  const [receiptLeadDays, setReceiptLeadDays] = useState("");
+  const [receiptFillRate, setReceiptFillRate] = useState("");
+  const [receiptNextDelivery, setReceiptNextDelivery] = useState("");
+
+  const selectedReceiptProduct = useMemo(
+    () => consoleData?.products.find((product) => product.sku === receiptSku),
+    [consoleData, receiptSku]
   );
 
+  const selectedSupplier = useMemo(
+    () => consoleData?.suppliers.find((supplier) => supplier.name === receiptSupplier),
+    [consoleData, receiptSupplier]
+  );
+
+  useEffect(() => {
+    if (!consoleData?.products.length) {
+      return;
+    }
+    setSaleSku((current) => current || consoleData.products[0]!.sku);
+    setReceiptSku((current) => current || consoleData.products[0]!.sku);
+  }, [consoleData]);
+
+  useEffect(() => {
+    if (!selectedReceiptProduct) {
+      return;
+    }
+    setReceiptSupplier(selectedReceiptProduct.supplier);
+  }, [selectedReceiptProduct]);
+
+  useEffect(() => {
+    if (!selectedSupplier) {
+      return;
+    }
+    setReceiptLeadDays(String(selectedSupplier.averageLeadDays));
+    setReceiptFillRate(String(selectedSupplier.fillRate));
+    setReceiptNextDelivery(selectedSupplier.nextDelivery);
+  }, [selectedSupplier]);
+
+  return (
+    <Card className="border border-border/70 bg-card/92">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-sm">
+          <ShoppingCartIcon className="size-4" />
+          Operations console
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        {!consoleData ? (
+          <>
+            <Skeleton className="h-44 rounded-none" />
+            <Skeleton className="h-44 rounded-none" />
+            <Skeleton className="h-28 rounded-none" />
+          </>
+        ) : (
+          <>
+            <div className="grid gap-4 xl:grid-cols-2">
+              <Card className="border border-border/70 bg-background/55">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <ShoppingCartIcon className="size-4" />
+                    Record sale
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <form
+                    className="flex flex-col gap-3"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      const quantity = Number(saleQty);
+                      if (!saleSku || !Number.isFinite(quantity) || quantity <= 0) {
+                        toast.error("Enter a valid product and quantity");
+                        return;
+                      }
+                      void onRecordSale({ sku: saleSku, quantity, channel: saleChannel }).then(() =>
+                        setSaleQty("1")
+                      );
+                    }}
+                  >
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor="sale-sku">Product</Label>
+                      <Select value={saleSku} onValueChange={(value) => setSaleSku(value ?? "")}>
+                        <SelectTrigger id="sale-sku">
+                          <SelectValue placeholder="Choose a product" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            {consoleData.products.map((product) => (
+                              <SelectItem key={product.sku} value={product.sku}>
+                                {product.name} · {product.onHand} on hand
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div className="flex flex-col gap-1.5">
+                        <Label htmlFor="sale-qty">Quantity</Label>
+                        <Input
+                          id="sale-qty"
+                          min="1"
+                          step="1"
+                          type="number"
+                          value={saleQty}
+                          onChange={(event) => setSaleQty(event.target.value)}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <Label htmlFor="sale-channel">Channel</Label>
+                        <Select
+                          value={saleChannel}
+                          onValueChange={(value) =>
+                            setSaleChannel(value as "retail" | "online" | "service")
+                          }
+                        >
+                          <SelectTrigger id="sale-channel">
+                            <SelectValue placeholder="Choose a channel" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectGroup>
+                              <SelectItem value="retail">Retail</SelectItem>
+                              <SelectItem value="online">Online</SelectItem>
+                              <SelectItem value="service">Service</SelectItem>
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <Button disabled={pendingAction !== null} type="submit">
+                      <ShoppingCartIcon data-icon="inline-start" />
+                      {pendingAction === "sale" ? "Recording sale..." : "Commit sale"}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+
+              <Card className="border border-border/70 bg-background/55">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <PackagePlusIcon className="size-4" />
+                    Receive stock
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <form
+                    className="flex flex-col gap-3"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      const quantity = Number(receiptQty);
+                      const leadDays = Number(receiptLeadDays);
+                      const fillRate = Number(receiptFillRate);
+                      if (
+                        !receiptSku ||
+                        !receiptSupplier ||
+                        !Number.isFinite(quantity) ||
+                        !Number.isFinite(leadDays) ||
+                        !Number.isFinite(fillRate) ||
+                        quantity <= 0
+                      ) {
+                        toast.error("Enter valid stock receipt details");
+                        return;
+                      }
+                      void onReceiveStock({
+                        sku: receiptSku,
+                        quantity,
+                        supplierName: receiptSupplier,
+                        leadDays,
+                        fillRate,
+                        nextDelivery: receiptNextDelivery || undefined,
+                      }).then(() => setReceiptQty("1"));
+                    }}
+                  >
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor="receipt-sku">Product</Label>
+                      <Select value={receiptSku} onValueChange={(value) => setReceiptSku(value ?? "")}>
+                        <SelectTrigger id="receipt-sku">
+                          <SelectValue placeholder="Choose a product" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            {consoleData.products.map((product) => (
+                              <SelectItem key={product.sku} value={product.sku}>
+                                {product.name} · {product.supplier}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div className="flex flex-col gap-1.5">
+                        <Label htmlFor="receipt-qty">Units received</Label>
+                        <Input
+                          id="receipt-qty"
+                          min="1"
+                          step="1"
+                          type="number"
+                          value={receiptQty}
+                          onChange={(event) => setReceiptQty(event.target.value)}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <Label htmlFor="receipt-supplier">Supplier</Label>
+                        <Select
+                          value={receiptSupplier}
+                          onValueChange={(value) => setReceiptSupplier(value ?? "")}
+                        >
+                          <SelectTrigger id="receipt-supplier">
+                            <SelectValue placeholder="Choose a supplier" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectGroup>
+                              {consoleData.suppliers.map((supplier) => (
+                                <SelectItem key={supplier.name} value={supplier.name}>
+                                  {supplier.name}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-3">
+                      <div className="flex flex-col gap-1.5">
+                        <Label htmlFor="receipt-lead">Lead days</Label>
+                        <Input
+                          id="receipt-lead"
+                          min="1"
+                          step="0.5"
+                          type="number"
+                          value={receiptLeadDays}
+                          onChange={(event) => setReceiptLeadDays(event.target.value)}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <Label htmlFor="receipt-fill">Fill rate %</Label>
+                        <Input
+                          id="receipt-fill"
+                          max="100"
+                          min="1"
+                          step="1"
+                          type="number"
+                          value={receiptFillRate}
+                          onChange={(event) => setReceiptFillRate(event.target.value)}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <Label htmlFor="receipt-next">Next delivery</Label>
+                        <Input
+                          id="receipt-next"
+                          placeholder="Fri 16:00"
+                          value={receiptNextDelivery}
+                          onChange={(event) => setReceiptNextDelivery(event.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <Button disabled={pendingAction !== null} type="submit" variant="outline">
+                      <PackagePlusIcon data-icon="inline-start" />
+                      {pendingAction === "receipt" ? "Posting receipt..." : "Post stock receipt"}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card className="border border-border/70 bg-background/55">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Clock3Icon className="size-4" />
+                  Recent activity
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-3">
+                {consoleData.recentActivity.length === 0 ? (
+                  <div className="border border-border/70 bg-card/70 p-4 text-sm text-muted-foreground">
+                    No activity yet.
+                  </div>
+                ) : (
+                  consoleData.recentActivity.map((event) => (
+                    <div
+                      key={event.id}
+                      className="flex flex-col gap-2 border border-border/70 bg-card/70 p-3 md:flex-row md:items-start md:justify-between"
+                    >
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{event.title}</span>
+                          <Badge variant="outline">{event.kind}</Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground">{event.detail}</div>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {new Date(event.createdAt).toLocaleString("en-US", {
+                          dateStyle: "medium",
+                          timeStyle: "short",
+                        })}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+type DashboardShellProps = {
+  activeSection: DashboardSection;
+  viewer: DashboardViewer;
+};
+
+export default function DashboardShell({ activeSection, viewer }: DashboardShellProps) {
+  const availableSections = dashboardSectionsByRole[viewer.role];
+  const isLive = viewer.authMode === "clerk" && viewer.isAuthenticated;
+  const { user, isLoaded } = useUser();
+  const { isLoading: isConvexAuthLoading, isAuthenticated: isConvexAuthenticated } = useConvexAuth();
+  const syncViewer = useMutation(api.dashboard.syncViewer);
+  const ensureSeedData = useMutation(api.dashboard.ensureSeedData);
+  const updateUserRole = useMutation(api.dashboard.updateUserRole);
+  const recordSale = useMutation(api.dashboard.recordSale);
+  const receiveStock = useMutation(api.dashboard.receiveStock);
+  const initializedRef = useRef(false);
+  const [pendingUserId, setPendingUserId] = useState<Doc<"users">["_id"] | null>(null);
+  const [pendingAction, setPendingAction] = useState<"sale" | "receipt" | null>(null);
+  const canUseConvexAuth = isLive && isLoaded && !isConvexAuthLoading && isConvexAuthenticated;
+
+  const persistedViewer = useQuery(api.dashboard.viewer, canUseConvexAuth ? {} : "skip");
+  const canUsePersistedQueries = canUseConvexAuth && Boolean(persistedViewer);
+  const snapshot = useQuery(api.dashboard.snapshot, canUsePersistedQueries ? {} : "skip");
+  const effectiveRole = persistedViewer?.role ?? viewer.role;
+  const users = useQuery(
+    api.dashboard.listUsers,
+    canUsePersistedQueries && effectiveRole === "manager" ? {} : "skip"
+  );
+  const operationsConsole = useQuery(
+    api.dashboard.operationsConsole,
+    canUsePersistedQueries ? {} : "skip"
+  );
+  const isLoadingLiveSnapshot =
+    isLive &&
+    (!isLoaded ||
+      isConvexAuthLoading ||
+      (canUseConvexAuth && (!persistedViewer || !snapshot || !operationsConsole)));
+
+  useEffect(() => {
+    if (!canUseConvexAuth || !user || initializedRef.current) {
+      return;
+    }
+
+    initializedRef.current = true;
+    void (async () => {
+      try {
+        const metadata = user.publicMetadata as Record<string, unknown> | undefined;
+        const companyName =
+          typeof metadata?.companyName === "string"
+            ? metadata.companyName
+            : typeof metadata?.organization === "string"
+              ? metadata.organization
+              : "TechAssure";
+
+        await syncViewer({
+          name: user.fullName ?? user.firstName ?? "TechAssure operator",
+          email: user.primaryEmailAddress?.emailAddress,
+          companyName,
+        });
+        await ensureSeedData({});
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Unable to initialize dashboard");
+        initializedRef.current = false;
+      }
+    })();
+  }, [canUseConvexAuth, ensureSeedData, syncViewer, user]);
+
+  const effectiveViewer = useMemo<DashboardViewer>(() => {
+    if (!persistedViewer) {
+      return viewer;
+    }
+
+    return {
+      authMode: viewer.authMode,
+      isAuthenticated: viewer.isAuthenticated,
+      name: persistedViewer.name,
+      email: persistedViewer.email,
+      role: persistedViewer.role,
+      companyName: persistedViewer.companyName,
+    };
+  }, [viewer, persistedViewer]);
+
+  const liveSnapshot = isLive ? (snapshot as DashboardSnapshot | undefined) : undefined;
+  const displaySnapshot = liveSnapshot ?? demoDashboardSnapshot;
+  const isInitialLoading = isLive && !liveSnapshot;
+  const criticalAlerts = displaySnapshot.alertFeed.filter(
+    (item) => item.severity === "critical"
+  ).length;
+  const showSkeleton = isInitialLoading || isLoadingLiveSnapshot;
+
+  const managementPanel =
+    isLive && effectiveViewer.role === "manager" ? (
+      <RoleManagementPanel
+        pendingUserId={pendingUserId}
+        users={users}
+        onUpdateRole={(userId, role) => {
+          setPendingUserId(userId);
+          void updateUserRole({ userId, role })
+            .then(() => toast.success("Role updated"))
+            .catch((error) =>
+              toast.error(error instanceof Error ? error.message : "Unable to update role")
+            )
+            .finally(() => setPendingUserId(null));
+        }}
+      />
+    ) : undefined;
+
+  const operationsPanel =
+    isLive && effectiveViewer.role !== "analyst" ? (
+      <OperationsConsolePanel
+        consoleData={operationsConsole as OperationsConsoleData | undefined}
+        pendingAction={pendingAction}
+        onRecordSale={async ({ sku, quantity, channel }) => {
+          setPendingAction("sale");
+          try {
+            await recordSale({ sku, quantity, channel });
+            toast.success("Sale recorded and forecasts refreshed");
+          } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Unable to record sale");
+          } finally {
+            setPendingAction(null);
+          }
+        }}
+        onReceiveStock={async ({ sku, quantity, supplierName, leadDays, fillRate, nextDelivery }) => {
+          setPendingAction("receipt");
+          try {
+            await receiveStock({ sku, quantity, supplierName, leadDays, fillRate, nextDelivery });
+            toast.success("Stock receipt posted and forecasts refreshed");
+          } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Unable to post stock receipt");
+          } finally {
+            setPendingAction(null);
+          }
+        }}
+      />
+    ) : undefined;
+
   const content = (() => {
-    if (!liveSnapshot) {
+    if (showSkeleton) {
       return <DashboardLoadingState />;
     }
 
     switch (activeSection) {
       case "sales":
-        return <SalesPanel snapshot={liveSnapshot} />;
+        return <SalesPanel snapshot={displaySnapshot} />;
       case "inventory":
-        return <InventoryPanel snapshot={liveSnapshot} />;
+        return <InventoryPanel snapshot={displaySnapshot} />;
       case "suppliers":
-        return <SuppliersPanel snapshot={liveSnapshot} />;
+        return <SuppliersPanel snapshot={displaySnapshot} />;
       case "forecast":
-        return <ForecastPanel snapshot={liveSnapshot} />;
+        return <ForecastPanel snapshot={displaySnapshot} />;
       default:
         return (
           <OverviewPanel
             managementPanel={managementPanel}
             operationsPanel={operationsPanel}
-            snapshot={liveSnapshot}
+            snapshot={displaySnapshot}
           />
         );
     }
@@ -652,8 +1209,7 @@ export default function DashboardShell({
         activeSection={activeSection}
         availableSections={availableSections}
         criticalAlerts={criticalAlerts}
-        viewer={viewer}
-        onSectionChange={setActiveSection}
+        viewer={effectiveViewer}
       />
       <SidebarInset className="border-0">
         <div className="flex min-h-svh flex-col">
@@ -673,7 +1229,7 @@ export default function DashboardShell({
                   {liveSnapshot?.dashboardSummary.liveSyncStatus ?? "Syncing"}
                 </Badge>
                 {criticalAlerts > 0 ? (
-                  <Badge variant={severityVariant(liveSnapshot?.alertFeed[0]?.severity ?? "info")}>
+                  <Badge variant={severityVariant(displaySnapshot.alertFeed[0]?.severity ?? "info")}>
                     <CircleAlertIcon data-icon="inline-start" />
                     {criticalAlerts} alert{criticalAlerts === 1 ? "" : "s"}
                   </Badge>
@@ -681,13 +1237,19 @@ export default function DashboardShell({
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() =>
-                    setActiveSection(availableSections.includes("inventory") ? "inventory" : "forecast")
+                  render={
+                    <Link
+                      href={
+                        availableSections.includes("inventory")
+                          ? "/dashboard/inventory"
+                          : "/dashboard/forecast"
+                      }
+                    >
+                      <PackageSearchIcon className="size-3.5" />
+                      {availableSections.includes("inventory") ? "Reorder queue" : "Forecast"}
+                    </Link>
                   }
-                >
-                  <PackageSearchIcon className="size-3.5" />
-                  {availableSections.includes("inventory") ? "Reorder queue" : "Forecast"}
-                </Button>
+                />
               </div>
             </div>
           </header>
