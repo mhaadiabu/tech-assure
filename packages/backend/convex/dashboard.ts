@@ -470,7 +470,6 @@ export const syncViewer = mutation({
     name: v.string(),
     email: v.optional(v.string()),
     companyName: v.optional(v.string()),
-    preferredRole: v.optional(roleValidator),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -478,13 +477,13 @@ export const syncViewer = mutation({
       throw new Error("Authentication required");
     }
 
-    const externalId = identity.subject ?? identity.tokenIdentifier;
+    const externalId = identity.tokenIdentifier;
     const existing = await ctx.db
       .query("users")
       .withIndex("by_external_id", (q) => q.eq("externalId", externalId))
       .unique();
 
-    const role = existing?.role ?? args.preferredRole ?? inferRoleFromEmail(args.email ?? identity.email);
+    const role = existing?.role ?? inferRoleFromEmail(args.email ?? identity.email);
     const now = Date.now();
 
     if (existing) {

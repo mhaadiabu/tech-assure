@@ -20,7 +20,7 @@ export async function getSessionUser(ctx: ReaderCtx): Promise<SessionUser | null
     return null;
   }
 
-  const externalId = identity.subject ?? identity.tokenIdentifier;
+  const externalId = identity.tokenIdentifier;
   const user = await ctx.db
     .query("users")
     .withIndex("by_external_id", (q) => q.eq("externalId", externalId))

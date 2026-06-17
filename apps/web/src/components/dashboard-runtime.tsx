@@ -527,7 +527,6 @@ export default function DashboardRuntime({ initialViewer }: DashboardRuntimeProp
           name: user.fullName ?? user.firstName ?? "TechAssure operator",
           email: user.primaryEmailAddress?.emailAddress,
           companyName,
-          preferredRole: initialViewer.role,
         });
         await ensureSeedData({});
       } catch (error) {
