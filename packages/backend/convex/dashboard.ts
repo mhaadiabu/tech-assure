@@ -524,6 +524,43 @@ export const syncViewer = mutation({
   },
 });
 
+export const upsertUserFromClerk = mutation({
+  args: {
+    externalId: v.string(),
+    name: v.string(),
+    email: v.optional(v.string()),
+    imageUrl: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("users")
+      .withIndex("by_external_id", (q) => q.eq("externalId", args.externalId))
+      .unique();
+
+    const role = existing?.role ?? inferRoleFromEmail(args.email);
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        name: args.name,
+        email: args.email ?? existing.email,
+      });
+      return await ctx.db.get(existing._id);
+    }
+
+    const userId = await ctx.db.insert("users", {
+      externalId: args.externalId,
+      name: args.name,
+      email: args.email,
+      role,
+      companyName: "TechAssure",
+      location: "Accra HQ",
+      createdAt: Date.now(),
+    });
+
+    return await ctx.db.get(userId);
+  },
+});
+
 export const ensureSeedData = mutation({
   args: {},
   handler: async (ctx) => {
@@ -755,8 +792,10 @@ export const viewer = query({
 export const listUsers = query({
   args: {},
   handler: async (ctx) => {
-    const session = await requireSessionUser(ctx);
-    requireRole(session.user, ["manager"]);
+    const session = await getSessionUser(ctx);
+    if (!session || session.user.role !== "manager") {
+      return [];
+    }
 
     const users = await ctx.db.query("users").collect();
 
@@ -775,7 +814,14 @@ export const listUsers = query({
 export const operationsConsole = query({
   args: {},
   handler: async (ctx) => {
-    await requireSessionUser(ctx);
+    const session = await getSessionUser(ctx);
+    if (!session) {
+      return {
+        products: [],
+        suppliers: [],
+        recentActivity: [],
+      };
+    }
 
     const [products, suppliers, activityEvents] = await Promise.all([
       ctx.db.query("products").collect(),
@@ -820,6 +866,78 @@ export const operationsConsole = query({
   },
 });
 
+export const posSession = query({
+  args: {},
+  handler: async (ctx) => {
+    const session = await getSessionUser(ctx);
+    if (!session) {
+      return {
+        products: [],
+        suppliers: [],
+        todayRevenue: 0,
+        todayUnits: 0,
+        recentActivity: [],
+      };
+    }
+
+    const [products, suppliers, activityEvents, sales] = await Promise.all([
+      ctx.db.query("products").collect(),
+      ctx.db.query("suppliers").collect(),
+      ctx.db.query("activityEvents").collect(),
+      ctx.db.query("sales").collect(),
+    ]);
+
+    const supplierById = new Map(suppliers.map((supplier) => [supplier._id, supplier]));
+    const today = new Date().toISOString().slice(0, 10);
+
+    let todayRevenue = 0;
+    let todayUnits = 0;
+    for (const sale of sales) {
+      if (sale.soldAt !== today) continue;
+      todayRevenue += sale.revenue;
+      todayUnits += sale.quantity;
+    }
+
+    return {
+      products: products
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((product) => ({
+          sku: product.sku,
+          name: product.name,
+          category: product.category,
+          supplier: supplierById.get(product.supplierId)?.name ?? "Unknown supplier",
+          onHand: product.onHand,
+          unitPrice: product.unitPrice,
+          unitCost: product.unitCost,
+          status: product.status,
+        })),
+      suppliers: suppliers
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((supplier) => ({
+          name: supplier.name,
+          averageLeadDays: supplier.averageLeadDays,
+          fillRate: supplier.fillRate,
+          reliability: supplier.reliabilityScore,
+          openOrders: supplier.openOrders,
+          nextDelivery: supplier.nextDelivery,
+        })),
+      todayRevenue: round3(todayRevenue),
+      todayUnits,
+      recentActivity: activityEvents
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .slice(0, 12)
+        .map((event) => ({
+          id: event._id,
+          kind: event.kind,
+          title: event.title,
+          detail: event.detail,
+          createdAt: event.createdAt,
+          actorName: event.actorName ?? null,
+        })),
+    };
+  },
+});
+
 export const updateUserRole = mutation({
   args: {
     userId: v.id("users"),
@@ -837,7 +955,31 @@ export const updateUserRole = mutation({
 export const snapshot = query({
   args: {},
   handler: async (ctx) => {
-    await requireSessionUser(ctx);
+    const session = await getSessionUser(ctx);
+    if (!session) {
+      return {
+        dashboardSummary: {
+          monthlyRevenue: 0,
+          monthlyRevenueChange: 0,
+          grossMargin: 0,
+          grossMarginChange: 0,
+          sellThroughRate: 0,
+          sellThroughRateChange: 0,
+          forecastAccuracy: 0,
+          forecastAccuracyChange: 0,
+          atRiskSkus: 0,
+          urgentSupplierIssues: 0,
+          liveSyncStatus: "Awaiting sign-in",
+        },
+        salesPerformance: [],
+        demandForecast: [],
+        inventoryHealth: [],
+        topProducts: [],
+        supplierSnapshots: [],
+        alertFeed: [],
+        recommendations: [],
+      };
+    }
 
     const [suppliers, products, sales, forecasts, alerts, recommendations] = await Promise.all([
       ctx.db.query("suppliers").collect(),
