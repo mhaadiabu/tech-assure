@@ -5,7 +5,7 @@ import { mergeProps } from "@base-ui/react/merge-props"
 import { useRender } from "@base-ui/react/use-render"
 import { cva, type VariantProps } from "class-variance-authority"
 
-import { useIsMobile } from "@/hooks/use-mobile"
+import { useIsMobile } from "../hooks/use-mobile"
 import { cn } from "@_scaffold/ui/lib/utils"
 import { Button } from "@_scaffold/ui/components/button"
 import { Input } from "@_scaffold/ui/components/input"
