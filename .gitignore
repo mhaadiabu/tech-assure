@@ -49,3 +49,8 @@ coverage
 .cache
 tmp
 temp
+
+# Agent skill caches and snapshots
+.agents
+*.heapsnapshot
+skills-lock.json
