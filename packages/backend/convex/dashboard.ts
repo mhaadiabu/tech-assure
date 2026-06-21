@@ -12,7 +12,12 @@ import {
   supplierSeed,
 } from "./lib/seedData";
 
-const roleValidator = v.union(v.literal("manager"), v.literal("analyst"), v.literal("operations"));
+const roleValidator = v.union(
+  v.literal("manager"),
+  v.literal("cashier"),
+  v.literal("analyst"),
+  v.literal("operations")
+);
 const channelValidator = v.union(v.literal("retail"), v.literal("online"), v.literal("service"));
 
 type ProductDoc = Doc<"products">;
@@ -31,6 +36,14 @@ function inferRoleFromEmail(email: string | undefined) {
     normalized.includes("inventory")
   ) {
     return "operations" as const;
+  }
+  if (
+    normalized.includes("cashier") ||
+    normalized.includes("teller") ||
+    normalized.includes("pos") ||
+    normalized.includes("register")
+  ) {
+    return "cashier" as const;
   }
   if (
     normalized.includes("analyst") ||
@@ -580,7 +593,7 @@ export const recordSale = mutation({
   },
   handler: async (ctx, args) => {
     const session = await requireSessionUser(ctx);
-    requireRole(session.user, ["manager", "operations"]);
+    requireRole(session.user, ["manager", "cashier", "operations"]);
 
     if (args.quantity <= 0) {
       throw new Error("Quantity must be greater than zero");
