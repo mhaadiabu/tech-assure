@@ -3,6 +3,7 @@
 import { Button } from "@_scaffold/ui/components/button";
 import { Monitor, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
 
 const THEMES = ["light", "dark", "system"] as const;
 type Theme = (typeof THEMES)[number];
@@ -15,10 +16,20 @@ const ThemeIcon: Record<Theme, typeof Sun> = {
 
 export function ModeToggle() {
   const { theme, setTheme, resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const current = (theme as Theme) ?? "system";
   const next = THEMES[(THEMES.indexOf(current) + 1) % THEMES.length];
-  const Icon = ThemeIcon[current === "system" ? ((resolvedTheme as Theme) ?? "light") : current];
+  const activeTheme = mounted
+    ? current === "system"
+      ? ((resolvedTheme as Theme) ?? "light")
+      : current
+    : "light";
+  const Icon = ThemeIcon[activeTheme];
 
   return (
     <Button
@@ -28,7 +39,7 @@ export function ModeToggle() {
       onClick={() => setTheme(next)}
       title={`Switch to ${next} mode`}
     >
-      <Icon className="size-4" />
+      <Icon className="size-4" suppressHydrationWarning />
       <span className="sr-only">Switch to {next} mode</span>
     </Button>
   );
