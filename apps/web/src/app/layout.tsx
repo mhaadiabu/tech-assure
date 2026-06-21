@@ -1,6 +1,7 @@
 import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
-import { Fraunces, IBM_Plex_Mono, Manrope, Inter } from "next/font/google";
+import { GeistMono } from "geist/font/mono";
+import { GeistSans } from "geist/font/sans";
 
 import { cn } from "@_scaffold/ui/lib/utils";
 import { env } from "@_scaffold/env/web";
@@ -8,24 +9,6 @@ import { env } from "@_scaffold/env/web";
 import "../index.css";
 import Providers from "@/components/providers";
 import { ThemeProvider } from "@/components/theme-provider";
-
-const inter = Inter({subsets:['latin'],variable:'--font-sans'});
-
-const manrope = Manrope({
-  variable: "--font-manrope",
-  subsets: ["latin"],
-});
-
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
-  subsets: ["latin"],
-});
-
-const ibmPlexMono = IBM_Plex_Mono({
-  variable: "--font-ibm-plex-mono",
-  weight: ["400", "500"],
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "TechAssure Command Deck",
@@ -50,9 +33,13 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={cn("bg-background", manrope.variable, fraunces.variable, ibmPlexMono.variable, "font-sans", inter.variable)}
+      className={cn(
+        "bg-background font-sans antialiased",
+        GeistSans.variable,
+        GeistMono.variable,
+      )}
     >
-      <body className="antialiased selection:bg-foreground selection:text-background">
+      <body className="min-h-svh bg-background font-sans text-foreground antialiased selection:bg-foreground selection:text-background">
         {clerkEnabled ? (
           <ClerkProvider
             signInUrl={env.NEXT_PUBLIC_CLERK_SIGN_IN_URL}
