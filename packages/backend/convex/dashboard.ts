@@ -1296,3 +1296,139 @@ export const marketingSnapshot = query({
     };
   },
 });
+
+const supplierStatusValidator = v.union(
+  v.literal("healthy"),
+  v.literal("watch"),
+  v.literal("critical")
+);
+
+export const createSupplier = mutation({
+  args: {
+    name: v.string(),
+    category: v.string(),
+    contactEmail: v.string(),
+    averageLeadDays: v.number(),
+    reliabilityScore: v.number(),
+    nextDelivery: v.string(),
+    fillRate: v.number(),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const session = await requireSessionUser(ctx);
+    requireRole(session.user, ["manager", "operations"]);
+
+    const name = args.name.trim();
+    if (name.length === 0) {
+      throw new Error("Supplier name is required");
+    }
+
+    const existing = await ctx.db
+      .query("suppliers")
+      .withIndex("by_name", (q) => q.eq("name", name))
+      .unique();
+    if (existing) {
+      throw new Error(`Supplier "${name}" already exists`);
+    }
+
+    const reliabilityScore = Math.min(100, Math.max(0, args.reliabilityScore));
+    const fillRate = Math.min(100, Math.max(0, args.fillRate));
+    const averageLeadDays = Math.max(0, args.averageLeadDays);
+
+    return await ctx.db.insert("suppliers", {
+      name,
+      category: args.category.trim(),
+      contactEmail: args.contactEmail.trim(),
+      averageLeadDays,
+      reliabilityScore,
+      nextDelivery: args.nextDelivery,
+      openOrders: 0,
+      fillRate,
+      notes: args.notes?.trim() || undefined,
+    });
+  },
+});
+
+export const createProduct = mutation({
+  args: {
+    sku: v.string(),
+    name: v.string(),
+    category: v.string(),
+    supplierId: v.id("suppliers"),
+    unitCost: v.number(),
+    unitPrice: v.number(),
+    onHand: v.number(),
+    reorderPoint: v.number(),
+    leadDays: v.number(),
+    weeklyVelocity: v.number(),
+    shelfZone: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const session = await requireSessionUser(ctx);
+    requireRole(session.user, ["manager", "operations"]);
+
+    const sku = args.sku.trim().toUpperCase();
+    const name = args.name.trim();
+
+    if (sku.length === 0) {
+      throw new Error("SKU is required");
+    }
+    if (name.length === 0) {
+      throw new Error("Product name is required");
+    }
+    if (args.unitPrice < args.unitCost) {
+      throw new Error("Unit price must be at least the unit cost");
+    }
+    if (args.unitCost < 0 || args.unitPrice < 0) {
+      throw new Error("Prices must be non-negative");
+    }
+    if (args.onHand < 0 || args.reorderPoint < 0) {
+      throw new Error("Stock counts must be non-negative");
+    }
+    if (args.leadDays < 0 || args.weeklyVelocity < 0) {
+      throw new Error("Lead days and velocity must be non-negative");
+    }
+
+    const supplier = await ctx.db.get(args.supplierId);
+    if (!supplier) {
+      throw new Error("Selected supplier no longer exists");
+    }
+
+    const existing = await ctx.db
+      .query("products")
+      .withIndex("by_sku", (q) => q.eq("sku", sku))
+      .unique();
+    if (existing) {
+      throw new Error(`SKU "${sku}" already exists`);
+    }
+
+    const status = deriveProductStatus(args.onHand, args.reorderPoint);
+    const now = Date.now();
+
+    const productId = await ctx.db.insert("products", {
+      sku,
+      name,
+      category: args.category.trim(),
+      supplierId: args.supplierId,
+      unitCost: args.unitCost,
+      unitPrice: args.unitPrice,
+      onHand: args.onHand,
+      reorderPoint: args.reorderPoint,
+      leadDays: args.leadDays,
+      weeklyVelocity: args.weeklyVelocity,
+      shelfZone: args.shelfZone.trim() || "General",
+      status,
+    });
+
+    await ctx.db.insert("activityEvents", {
+      kind: "supplier",
+      title: `${name} added to catalog`,
+      detail: `SKU ${sku} priced at GHS ${args.unitPrice.toFixed(2)} via ${supplier.name}.`,
+      sku,
+      supplierName: supplier.name,
+      createdAt: nowTimestamp(),
+    });
+
+    return productId;
+  },
+});
