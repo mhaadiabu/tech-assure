@@ -6,7 +6,12 @@ export default defineSchema({
     externalId: v.string(),
     name: v.string(),
     email: v.optional(v.string()),
-    role: v.union(v.literal("manager"), v.literal("analyst"), v.literal("operations")),
+    role: v.union(
+      v.literal("manager"),
+      v.literal("cashier"),
+      v.literal("analyst"),
+      v.literal("operations")
+    ),
     companyName: v.optional(v.string()),
     location: v.optional(v.string()),
     createdAt: v.number(),
