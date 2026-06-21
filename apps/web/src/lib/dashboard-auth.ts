@@ -16,7 +16,12 @@ export const clerkEnabledServer = Boolean(
 );
 
 function isDashboardRole(value: unknown): value is DashboardRole {
-  return value === "manager" || value === "analyst" || value === "operations";
+  return (
+    value === "manager" ||
+    value === "cashier" ||
+    value === "analyst" ||
+    value === "operations"
+  );
 }
 
 function inferRoleFromEmail(email: string | null): DashboardRole {
@@ -29,6 +34,15 @@ function inferRoleFromEmail(email: string | null): DashboardRole {
     normalized.includes("inventory")
   ) {
     return "operations";
+  }
+
+  if (
+    normalized.includes("cashier") ||
+    normalized.includes("teller") ||
+    normalized.includes("pos") ||
+    normalized.includes("register")
+  ) {
+    return "cashier";
   }
 
   if (
