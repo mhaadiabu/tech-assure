@@ -789,6 +789,24 @@ export const viewer = query({
   },
 });
 
+export const supplierList = query({
+  args: {},
+  handler: async (ctx) => {
+    const session = await getSessionUser(ctx);
+    if (!session) return [];
+
+    const suppliers = await ctx.db.query("suppliers").collect();
+    return suppliers
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((supplier) => ({
+        _id: supplier._id,
+        name: supplier.name,
+        averageLeadDays: supplier.averageLeadDays,
+        fillRate: supplier.fillRate,
+      }));
+  },
+});
+
 export const listUsers = query({
   args: {},
   handler: async (ctx) => {

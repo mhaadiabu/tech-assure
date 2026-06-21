@@ -51,8 +51,9 @@ import {
 } from "@_scaffold/ui/components/table";
 
 import AppSidebar from "./app-sidebar";
-import { SidebarProvider } from "@_scaffold/ui/components/sidebar";
+import { NewProductButton, NewSupplierButton } from "./catalog-actions";
 import PosPanel from "./pos-panel";
+import { SidebarProvider } from "@_scaffold/ui/components/sidebar";
 import {
   dashboardSectionDescriptions,
   dashboardSectionLabels,
@@ -401,7 +402,13 @@ function SalesPanel({ snapshot }: { snapshot: DashboardSnapshot }) {
   );
 }
 
-function InventoryPanel({ snapshot }: { snapshot: DashboardSnapshot }) {
+function InventoryPanel({
+  snapshot,
+  canCreateProduct,
+}: {
+  snapshot: DashboardSnapshot;
+  canCreateProduct: boolean;
+}) {
   const { inventoryHealth } = snapshot;
 
   return (
@@ -437,7 +444,11 @@ function InventoryPanel({ snapshot }: { snapshot: DashboardSnapshot }) {
         </div>
       </Panel>
 
-      <Panel title="Restock queue" description="Sorted by lowest weeks-of-cover">
+      <Panel
+        title="Restock queue"
+        description="Sorted by lowest weeks-of-cover"
+        action={<NewProductButton canCreate={canCreateProduct} />}
+      >
         <Table>
           <TableHeader>
             <TableRow>
@@ -474,11 +485,21 @@ function InventoryPanel({ snapshot }: { snapshot: DashboardSnapshot }) {
   );
 }
 
-function SuppliersPanel({ snapshot }: { snapshot: DashboardSnapshot }) {
+function SuppliersPanel({
+  snapshot,
+  canCreateSupplier,
+}: {
+  snapshot: DashboardSnapshot;
+  canCreateSupplier: boolean;
+}) {
   const { supplierSnapshots } = snapshot;
 
   return (
-    <Panel title="Supplier network" description="Reliability, lead time, and fill rate across vendors">
+    <Panel
+      title="Supplier network"
+      description="Reliability, lead time, and fill rate across vendors"
+      action={<NewSupplierButton canCreate={canCreateSupplier} />}
+    >
       <Table>
         <TableHeader>
           <TableRow>
@@ -914,13 +935,27 @@ export default function DashboardShell({ activeSection, viewer }: DashboardShell
       );
     }
 
+    const canCreateProduct =
+      effectiveViewer.role === "manager" || effectiveViewer.role === "operations";
+    const canCreateSupplier = canCreateProduct;
+
     switch (activeSection) {
       case "sales":
         return <SalesPanel snapshot={displaySnapshot} />;
       case "inventory":
-        return <InventoryPanel snapshot={displaySnapshot} />;
+        return (
+          <InventoryPanel
+            snapshot={displaySnapshot}
+            canCreateProduct={canCreateProduct}
+          />
+        );
       case "suppliers":
-        return <SuppliersPanel snapshot={displaySnapshot} />;
+        return (
+          <SuppliersPanel
+            snapshot={displaySnapshot}
+            canCreateSupplier={canCreateSupplier}
+          />
+        );
       case "forecast":
         return <ForecastPanel snapshot={displaySnapshot} />;
       default:
