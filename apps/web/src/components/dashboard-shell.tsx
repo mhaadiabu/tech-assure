@@ -1,5 +1,6 @@
 "use client";
 
+import type { Route } from "next";
 import Link from "next/link";
 
 import { useUser } from "@clerk/nextjs";
@@ -8,16 +9,17 @@ import type { Doc } from "@_scaffold/backend/convex/_generated/dataModel";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import {
   ActivityIcon,
+  AlertTriangleIcon,
+  ArrowRightIcon,
   BellRingIcon,
   BrainCircuitIcon,
   CircleAlertIcon,
-  Clock3Icon,
   GaugeIcon,
-  PackagePlusIcon,
+  Loader2Icon,
   PackageSearchIcon,
   RefreshCcwIcon,
-  ShieldCheckIcon,
   ShoppingCartIcon,
+  SparklesIcon,
   TrendingUpIcon,
   UsersIcon,
 } from "lucide-react";
@@ -30,50 +32,14 @@ import {
   CartesianGrid,
   Line,
   LineChart,
+  ResponsiveContainer,
   XAxis,
   YAxis,
 } from "recharts";
 import { toast } from "sonner";
 
-import { Alert, AlertAction, AlertDescription, AlertTitle } from "@_scaffold/ui/components/alert";
 import { Badge } from "@_scaffold/ui/components/badge";
 import { Button } from "@_scaffold/ui/components/button";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@_scaffold/ui/components/card";
-import {
-  ChartContainer,
-  ChartLegend,
-  ChartLegendContent,
-  type ChartConfig,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@_scaffold/ui/components/chart";
-import {
-  Empty,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@_scaffold/ui/components/empty";
-import { Input } from "@_scaffold/ui/components/input";
-import { Label } from "@_scaffold/ui/components/label";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@_scaffold/ui/components/select";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@_scaffold/ui/components/sidebar";
 import { Skeleton } from "@_scaffold/ui/components/skeleton";
 import {
   Table,
@@ -83,13 +49,14 @@ import {
   TableHeader,
   TableRow,
 } from "@_scaffold/ui/components/table";
-import { cn } from "@_scaffold/ui/lib/utils";
 
 import AppSidebar from "./app-sidebar";
+import { SidebarProvider } from "@_scaffold/ui/components/sidebar";
+import PosPanel from "./pos-panel";
 import {
+  dashboardSectionDescriptions,
   dashboardSectionLabels,
   dashboardSectionsByRole,
-  demoDashboardSnapshot,
   type DashboardSection,
   type DashboardSnapshot,
 } from "@/lib/techassure-demo-data";
@@ -106,53 +73,29 @@ const percent = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 1,
 });
 
+const chartGrid = "var(--border)";
+const chartAxis = "var(--muted-foreground)";
+
 const overviewChartConfig = {
-  revenue: {
-    label: "Revenue",
-    color: "var(--chart-1)",
-  },
-  orders: {
-    label: "Orders",
-    color: "var(--chart-2)",
-  },
-} satisfies ChartConfig;
+  revenue: { label: "Revenue", color: "var(--chart-1)" },
+  orders: { label: "Orders", color: "var(--chart-2)" },
+} as const;
 
 const categoryChartConfig = {
-  devices: {
-    label: "Devices",
-    color: "var(--chart-2)",
-  },
-  accessories: {
-    label: "Accessories",
-    color: "var(--chart-1)",
-  },
-  services: {
-    label: "Services",
-    color: "var(--chart-3)",
-  },
-} satisfies ChartConfig;
+  devices: { label: "Devices", color: "var(--chart-1)" },
+  accessories: { label: "Accessories", color: "var(--chart-2)" },
+  services: { label: "Services", color: "var(--chart-3)" },
+} as const;
 
 const inventoryChartConfig = {
-  onHand: {
-    label: "On hand",
-    color: "var(--chart-2)",
-  },
-  reorderPoint: {
-    label: "Reorder point",
-    color: "var(--chart-5)",
-  },
-} satisfies ChartConfig;
+  onHand: { label: "On hand", color: "var(--chart-1)" },
+  reorderPoint: { label: "Reorder point", color: "var(--chart-3)" },
+} as const;
 
 const forecastChartConfig = {
-  actual: {
-    label: "Actual",
-    color: "var(--chart-2)",
-  },
-  forecast: {
-    label: "Forecast",
-    color: "var(--chart-1)",
-  },
-} satisfies ChartConfig;
+  actual: { label: "Actual", color: "var(--chart-2)" },
+  forecast: { label: "Forecast", color: "var(--chart-1)" },
+} as const;
 
 function formatDelta(value: number) {
   const prefix = value > 0 ? "+" : "";
@@ -171,206 +114,231 @@ function severityVariant(severity: "critical" | "watch" | "info") {
   return "secondary" as const;
 }
 
-function MetricCard({
-  title,
-  value,
-  delta,
-  icon: Icon,
-  caption,
+function MetricGrid({
+  items,
 }: {
-  title: string;
-  value: string;
-  delta: string;
-  caption: string;
-  icon: typeof ActivityIcon;
+  items: ReadonlyArray<{
+    label: string;
+    value: string;
+    delta: string;
+    icon: typeof ActivityIcon;
+  }>;
 }) {
   return (
-    <Card className="border border-border/70 bg-card/85 backdrop-blur">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">
-          <Icon />
-          {title}
-        </CardTitle>
-        <CardAction>
-          <Badge variant="outline">{delta}</Badge>
-        </CardAction>
-      </CardHeader>
-      <CardContent>
-        <div className="font-display text-4xl leading-none text-foreground">{value}</div>
-      </CardContent>
-    </Card>
+    <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border lg:grid-cols-4">
+      {items.map((item) => (
+        <div
+          key={item.label}
+          className="flex flex-col gap-2 bg-background px-5 py-4"
+        >
+          <dt className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            <item.icon className="size-3" />
+            {item.label}
+          </dt>
+          <dd className="font-semibold tabular-nums text-2xl text-foreground tracking-tight">
+            {item.value}
+          </dd>
+          <dd className="text-xs tabular-nums text-muted-foreground">{item.delta}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function Panel({
+  title,
+  description,
+  action,
+  children,
+  className,
+}: {
+  title: string;
+  description?: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <section
+      className={
+        "flex flex-col overflow-hidden rounded-lg border border-border bg-card " +
+        (className ?? "")
+      }
+    >
+      <header className="flex items-center justify-between gap-3 border-b border-border px-5 py-3">
+        <div className="min-w-0">
+          <h2 className="truncate text-sm font-semibold text-foreground">{title}</h2>
+          {description ? (
+            <p className="truncate text-xs text-muted-foreground">{description}</p>
+          ) : null}
+        </div>
+        {action ? <div className="shrink-0">{action}</div> : null}
+      </header>
+      <div className="flex-1">{children}</div>
+    </section>
   );
 }
 
 function OverviewPanel({
   snapshot,
   managementPanel,
-  operationsPanel,
 }: {
   snapshot: DashboardSnapshot;
   managementPanel?: React.ReactNode;
-  operationsPanel?: React.ReactNode;
 }) {
   const { dashboardSummary, salesPerformance, inventoryHealth, recommendations, alertFeed } = snapshot;
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
-          title="Monthly revenue"
-          value={currency.format(dashboardSummary.monthlyRevenue)}
-          delta={formatDelta(dashboardSummary.monthlyRevenueChange)}
-          caption="Tracked against last month's close."
-          icon={TrendingUpIcon}
-        />
-        <MetricCard
-          title="Gross margin"
-          value={percent.format(dashboardSummary.grossMargin)}
-          delta={formatDelta(dashboardSummary.grossMarginChange)}
-          caption="Margin protection after bundle activity."
-          icon={GaugeIcon}
-        />
-        <MetricCard
-          title="Sell-through rate"
-          value={percent.format(dashboardSummary.sellThroughRate)}
-          delta={formatDelta(dashboardSummary.sellThroughRateChange)}
-          caption="Fast-moving categories remain healthy."
-          icon={ShoppingCartIcon}
-        />
-        <MetricCard
-          title="Forecast accuracy"
-          value={percent.format(dashboardSummary.forecastAccuracy)}
-          delta={formatDelta(dashboardSummary.forecastAccuracyChange)}
-          caption="Model confidence on current reorder window."
-          icon={BrainCircuitIcon}
-        />
-      </div>
-      <div className="grid gap-4 xl:grid-cols-[1.6fr_1fr]">
-        <Card className="border border-border/70 bg-card/85 backdrop-blur">
-          <CardHeader>
-            <CardTitle>Commercial pulse</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={overviewChartConfig} className="min-h-[320px] w-full">
-              <AreaChart data={salesPerformance}>
-                <CartesianGrid vertical={false} />
-                <XAxis axisLine={false} dataKey="month" tickLine={false} tickMargin={10} />
+      <MetricGrid
+        items={[
+          {
+            label: "Monthly revenue",
+            value: currency.format(dashboardSummary.monthlyRevenue),
+            delta: formatDelta(dashboardSummary.monthlyRevenueChange),
+            icon: TrendingUpIcon,
+          },
+          {
+            label: "Gross margin",
+            value: percent.format(dashboardSummary.grossMargin),
+            delta: formatDelta(dashboardSummary.grossMarginChange),
+            icon: GaugeIcon,
+          },
+          {
+            label: "Sell-through",
+            value: percent.format(dashboardSummary.sellThroughRate),
+            delta: formatDelta(dashboardSummary.sellThroughRateChange),
+            icon: ShoppingCartIcon,
+          },
+          {
+            label: "Forecast accuracy",
+            value: percent.format(dashboardSummary.forecastAccuracy),
+            delta: formatDelta(dashboardSummary.forecastAccuracyChange),
+            icon: BrainCircuitIcon,
+          },
+        ]}
+      />
+
+      <div className="grid gap-6 xl:grid-cols-[1.6fr_1fr]">
+        <Panel title="Commercial pulse" description="Last 6 months of revenue and order volume">
+          <div className="h-[320px] min-w-0 px-2 py-4">
+            <ResponsiveContainer height="100%" width="100%">
+              <AreaChart data={[...salesPerformance]} margin={{ top: 4, right: 16, left: 8, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="revFill" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stopColor="var(--color-revenue)" stopOpacity={0.18} />
+                    <stop offset="100%" stopColor="var(--color-revenue)" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="ordFill" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stopColor="var(--color-orders)" stopOpacity={0.12} />
+                    <stop offset="100%" stopColor="var(--color-orders)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke={chartGrid} vertical={false} />
+                <XAxis
+                  axisLine={false}
+                  dataKey="month"
+                  tickLine={false}
+                  tickMargin={8}
+                  stroke={chartAxis}
+                  fontSize={11}
+                />
                 <YAxis
                   axisLine={false}
-                  tickFormatter={(value) => `${Math.round(value / 1000)}k`}
+                  tickFormatter={(value: number) => `${Math.round(value / 1000)}k`}
                   tickLine={false}
-                  width={46}
+                  width={42}
+                  stroke={chartAxis}
+                  fontSize={11}
                 />
-                <ChartTooltip
-                  content={<ChartTooltipContent />}
-                  cursor={{ stroke: "var(--color-border)" }}
-                />
-                <ChartLegend content={<ChartLegendContent />} />
                 <Area
                   dataKey="revenue"
-                  fill="var(--color-revenue)"
-                  fillOpacity={0.18}
+                  fill="url(#revFill)"
                   stroke="var(--color-revenue)"
-                  strokeWidth={2}
+                  strokeWidth={1.5}
                   type="monotone"
                 />
                 <Area
                   dataKey="orders"
-                  fill="var(--color-orders)"
-                  fillOpacity={0.12}
+                  fill="url(#ordFill)"
                   stroke="var(--color-orders)"
-                  strokeWidth={2}
+                  strokeWidth={1.5}
                   type="monotone"
                 />
               </AreaChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-        <Card className="border border-border/70 bg-card/85 backdrop-blur">
-          <CardHeader>
-            <CardTitle>Recommendations</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
+            </ResponsiveContainer>
+          </div>
+        </Panel>
+
+        <Panel title="Recommendations" description="Suggested actions to improve operations">
+          <ul className="divide-y divide-border">
             {recommendations.map((item) => (
-              <div
-                key={item.title}
-                className="flex flex-col gap-2 rounded-none border border-border/70 bg-background/40 p-3"
-              >
+              <li key={item.title} className="flex flex-col gap-1.5 px-5 py-4">
                 <div className="flex items-start justify-between gap-3">
-                  <div className="font-medium">{item.title}</div>
-                  <Badge variant="secondary">{item.impact}</Badge>
+                  <span className="text-sm font-medium text-foreground">{item.title}</span>
+                  <Badge variant="secondary" className="shrink-0 text-[10px]">
+                    {item.impact}
+                  </Badge>
                 </div>
-                <div className="text-xs text-muted-foreground">{item.detail}</div>
-              </div>
+                <p className="text-xs leading-relaxed text-muted-foreground">{item.detail}</p>
+              </li>
             ))}
-          </CardContent>
-        </Card>
+          </ul>
+        </Panel>
       </div>
-      <div className="grid gap-4 xl:grid-cols-[1.3fr_1fr]">
-        <Card className="border border-border/70 bg-card/85 backdrop-blur">
-          <CardHeader>
-            <CardTitle>Demand watchlist</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Product</TableHead>
-                  <TableHead>Cover</TableHead>
-                  <TableHead>Supplier</TableHead>
-                  <TableHead>Status</TableHead>
+
+      <div className="grid gap-6 xl:grid-cols-[1.3fr_1fr]">
+        <Panel title="Demand watchlist" description="Products at the highest replenishment risk">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Product</TableHead>
+                <TableHead className="text-right">Cover</TableHead>
+                <TableHead>Supplier</TableHead>
+                <TableHead className="text-right">Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {inventoryHealth.map((item) => (
+                <TableRow key={item.sku}>
+                  <TableCell>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-medium text-foreground">{item.name}</span>
+                      <span className="text-xs text-muted-foreground">{item.category}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {item.coverageWeeks.toFixed(1)}w
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{item.supplier}</TableCell>
+                  <TableCell className="text-right">
+                    <Badge variant={statusBadgeVariant(item.status)}>{item.status}</Badge>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {inventoryHealth.map((item) => (
-                  <TableRow key={item.sku}>
-                    <TableCell>
-                      <div className="flex flex-col gap-0.5">
-                        <span className="font-medium">{item.name}</span>
-                        <span className="text-muted-foreground">{item.category}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>{item.coverageWeeks.toFixed(1)} weeks</TableCell>
-                    <TableCell>{item.supplier}</TableCell>
-                    <TableCell>
-                      <Badge variant={statusBadgeVariant(item.status)}>{item.status}</Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-        <div className="flex flex-col gap-4">
+              ))}
+            </TableBody>
+          </Table>
+        </Panel>
+
+        <div className="flex flex-col gap-6">
           {alertFeed.slice(0, 2).map((alert) => (
-            <Alert
+            <Panel
               key={alert.title}
-              variant={alert.severity === "critical" ? "destructive" : "default"}
-              className="border-border/70 bg-card/85 backdrop-blur"
+              title={alert.title}
+              description={alert.severity === "critical" ? "Critical alert" : "Watch alert"}
             >
-              <CircleAlertIcon />
-              <AlertTitle>{alert.title}</AlertTitle>
-              <AlertDescription>{alert.detail}</AlertDescription>
-              <AlertAction>
-                <Button size="xs" variant="outline">
+              <div className="flex items-center justify-between gap-3 px-5 py-4">
+                <p className="text-sm leading-relaxed text-foreground">{alert.detail}</p>
+                <Button size="sm" variant="outline">
                   Review
                 </Button>
-              </AlertAction>
-            </Alert>
+              </div>
+            </Panel>
           ))}
         </div>
       </div>
-      {operationsPanel || managementPanel ? (
-        <div
-          className={cn(
-            "grid gap-4",
-            operationsPanel && managementPanel && "xl:grid-cols-[1.35fr_1fr]"
-          )}
-        >
-          {operationsPanel}
-          {managementPanel}
-        </div>
-      ) : null}
+
+      {managementPanel}
     </div>
   );
 }
@@ -379,53 +347,56 @@ function SalesPanel({ snapshot }: { snapshot: DashboardSnapshot }) {
   const { salesPerformance, topProducts } = snapshot;
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
-      <Card className="border border-border/70 bg-card/85 backdrop-blur">
-        <CardHeader>
-          <CardTitle>Revenue mix</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ChartContainer config={categoryChartConfig} className="min-h-[340px] w-full">
-            <BarChart data={salesPerformance}>
-              <CartesianGrid vertical={false} />
-              <XAxis axisLine={false} dataKey="month" tickLine={false} tickMargin={10} />
+    <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+      <Panel title="Revenue mix" description="Monthly revenue by category">
+        <div className="h-[340px] min-w-0 px-2 py-4">
+          <ResponsiveContainer height="100%" width="100%">
+            <BarChart data={[...salesPerformance]} margin={{ top: 4, right: 16, left: 8, bottom: 0 }}>
+              <CartesianGrid stroke={chartGrid} vertical={false} />
+              <XAxis
+                axisLine={false}
+                dataKey="month"
+                tickLine={false}
+                tickMargin={8}
+                stroke={chartAxis}
+                fontSize={11}
+              />
               <YAxis
                 axisLine={false}
-                tickFormatter={(value) => `${Math.round(value / 1000)}k`}
+                tickFormatter={(value: number) => `${Math.round(value / 1000)}k`}
                 tickLine={false}
-                width={46}
+                width={42}
+                stroke={chartAxis}
+                fontSize={11}
               />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <ChartLegend content={<ChartLegendContent />} />
-              <Bar dataKey="devices" fill="var(--color-devices)" radius={0} />
-              <Bar dataKey="accessories" fill="var(--color-accessories)" radius={0} />
-              <Bar dataKey="services" fill="var(--color-services)" radius={0} />
+              <Bar dataKey="devices" fill="var(--color-devices)" radius={2} stackId="mix" />
+              <Bar dataKey="accessories" fill="var(--color-accessories)" radius={2} stackId="mix" />
+              <Bar dataKey="services" fill="var(--color-services)" radius={2} stackId="mix" />
             </BarChart>
-          </ChartContainer>
-        </CardContent>
-      </Card>
-      <Card className="border border-border/70 bg-card/85 backdrop-blur">
-        <CardHeader>
-          <CardTitle>Top products</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3">
+          </ResponsiveContainer>
+        </div>
+      </Panel>
+
+      <Panel title="Top products" description="Highest revenue contributors">
+        <ul className="divide-y divide-border">
           {topProducts.map((item) => (
-            <div
+            <li
               key={item.name}
-              className="flex flex-col gap-2 rounded-none border border-border/70 bg-background/40 p-3"
+              className="flex items-center justify-between gap-3 px-5 py-3.5"
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="font-medium">{item.name}</div>
-                <Badge variant="secondary">{item.units} units</Badge>
+              <div className="min-w-0">
+                <div className="truncate text-sm font-medium text-foreground">{item.name}</div>
+                <div className="text-xs text-muted-foreground tabular-nums">
+                  {item.units} units · {item.margin.toFixed(1)}% margin
+                </div>
               </div>
-              <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-                <span>{currency.format(item.revenue)}</span>
-                <span>{item.margin.toFixed(1)}% margin</span>
+              <div className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
+                {currency.format(item.revenue)}
               </div>
-            </div>
+            </li>
           ))}
-        </CardContent>
-      </Card>
+        </ul>
+      </Panel>
     </div>
   );
 }
@@ -434,54 +405,71 @@ function InventoryPanel({ snapshot }: { snapshot: DashboardSnapshot }) {
   const { inventoryHealth } = snapshot;
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[1.35fr_1fr]">
-      <Card className="border border-border/70 bg-card/85 backdrop-blur">
-        <CardHeader>
-          <CardTitle>Inventory pressure</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ChartContainer config={inventoryChartConfig} className="min-h-[340px] w-full">
-            <BarChart data={inventoryHealth}>
-              <CartesianGrid vertical={false} />
+    <div className="grid gap-6 xl:grid-cols-[1.35fr_1fr]">
+      <Panel title="Inventory pressure" description="On-hand vs reorder point by SKU">
+        <div className="h-[340px] min-w-0 px-2 py-4">
+          <ResponsiveContainer height="100%" width="100%">
+            <BarChart data={[...inventoryHealth]} margin={{ top: 4, right: 16, left: 8, bottom: 0 }}>
+              <CartesianGrid stroke={chartGrid} vertical={false} />
               <XAxis
                 axisLine={false}
                 dataKey="sku"
                 tickLine={false}
-                tickMargin={10}
+                tickMargin={8}
+                stroke={chartAxis}
+                fontSize={10}
+                interval={0}
+                angle={-30}
+                dy={6}
+                height={50}
               />
-              <YAxis axisLine={false} tickLine={false} width={38} />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <ChartLegend content={<ChartLegendContent />} />
-              <Bar dataKey="onHand" fill="var(--color-onHand)" radius={0} />
-              <Bar dataKey="reorderPoint" fill="var(--color-reorderPoint)" radius={0} />
+              <YAxis
+                axisLine={false}
+                tickLine={false}
+                width={32}
+                stroke={chartAxis}
+                fontSize={11}
+              />
+              <Bar dataKey="onHand" fill="var(--color-onHand)" radius={2} />
+              <Bar dataKey="reorderPoint" fill="var(--color-reorderPoint)" radius={2} />
             </BarChart>
-          </ChartContainer>
-        </CardContent>
-      </Card>
-      <Card className="border border-border/70 bg-card/85 backdrop-blur">
-        <CardHeader>
-          <CardTitle>Restock queue</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3">
-          {inventoryHealth.map((item) => (
-            <div
-              key={item.sku}
-              className="flex flex-col gap-2 rounded-none border border-border/70 bg-background/40 p-3"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div className="font-medium">{item.name}</div>
-                <Badge variant={statusBadgeVariant(item.status)}>{item.status}</Badge>
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                <span>{item.onHand} units on hand</span>
-                <span>{item.reorderPoint} unit trigger</span>
-                <span>{item.coverageWeeks.toFixed(1)} weeks cover</span>
-                <span>{item.nextDelivery}</span>
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+          </ResponsiveContainer>
+        </div>
+      </Panel>
+
+      <Panel title="Restock queue" description="Sorted by lowest weeks-of-cover">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Product</TableHead>
+              <TableHead className="text-right">Cover</TableHead>
+              <TableHead className="text-right">On hand</TableHead>
+              <TableHead className="text-right">Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {inventoryHealth.map((item) => (
+              <TableRow key={item.sku}>
+                <TableCell>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-medium text-foreground">{item.name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {item.supplier} · {item.nextDelivery}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {item.coverageWeeks.toFixed(1)}w
+                </TableCell>
+                <TableCell className="text-right tabular-nums">{item.onHand}</TableCell>
+                <TableCell className="text-right">
+                  <Badge variant={statusBadgeVariant(item.status)}>{item.status}</Badge>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Panel>
     </div>
   );
 }
@@ -490,47 +478,42 @@ function SuppliersPanel({ snapshot }: { snapshot: DashboardSnapshot }) {
   const { supplierSnapshots } = snapshot;
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[1.25fr_1fr]">
-      <div className="grid gap-4 md:grid-cols-2">
-        {supplierSnapshots.map((supplier) => (
-          <Card key={supplier.name} className="border border-border/70 bg-card/85 backdrop-blur">
-            <CardHeader>
-              <CardTitle>{supplier.name}</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-3">
-              <div className="rounded-none border border-border/70 bg-background/40 p-3">
-                <div className="text-xs text-muted-foreground">Reliability</div>
-                <div className="mt-1 font-display text-3xl leading-none">
+    <Panel title="Supplier network" description="Reliability, lead time, and fill rate across vendors">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Supplier</TableHead>
+            <TableHead className="text-right">Reliability</TableHead>
+            <TableHead className="text-right">Lead time</TableHead>
+            <TableHead className="text-right">Fill rate</TableHead>
+            <TableHead className="text-right">Open orders</TableHead>
+            <TableHead>Note</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {supplierSnapshots.map((supplier) => (
+            <TableRow key={supplier.name}>
+              <TableCell className="font-medium text-foreground">{supplier.name}</TableCell>
+              <TableCell className="text-right tabular-nums">
+                <span
+                  className={
+                    supplier.reliability < 80
+                      ? "text-destructive"
+                      : "text-foreground"
+                  }
+                >
                   {supplier.reliability}%
-                </div>
-              </div>
-              <div className="rounded-none border border-border/70 bg-background/40 p-3">
-                <div className="text-xs text-muted-foreground">Lead time</div>
-                <div className="mt-1 font-display text-3xl leading-none">
-                  {supplier.leadDays}d
-                </div>
-              </div>
-              <div className="rounded-none border border-border/70 bg-background/40 p-3">
-                <div className="text-xs text-muted-foreground">Open orders</div>
-                <div className="mt-1 text-sm font-medium">{supplier.openOrders}</div>
-              </div>
-              <div className="rounded-none border border-border/70 bg-background/40 p-3">
-                <div className="text-xs text-muted-foreground">Fill rate</div>
-                <div className="mt-1 text-sm font-medium">{supplier.fillRate}%</div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-      <Empty className="border border-border/70 bg-card/85 p-8 backdrop-blur">
-        <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <ShieldCheckIcon />
-          </EmptyMedia>
-          <EmptyTitle>No supplier escalations</EmptyTitle>
-        </EmptyHeader>
-      </Empty>
-    </div>
+                </span>
+              </TableCell>
+              <TableCell className="text-right tabular-nums">{supplier.leadDays}d</TableCell>
+              <TableCell className="text-right tabular-nums">{supplier.fillRate}%</TableCell>
+              <TableCell className="text-right tabular-nums">{supplier.openOrders}</TableCell>
+              <TableCell className="text-xs text-muted-foreground">{supplier.note || "—"}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </Panel>
   );
 }
 
@@ -538,70 +521,165 @@ function ForecastPanel({ snapshot }: { snapshot: DashboardSnapshot }) {
   const { demandForecast, alertFeed } = snapshot;
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
-      <Card className="border border-border/70 bg-card/85 backdrop-blur">
-        <CardHeader>
-          <CardTitle>Demand forecast</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ChartContainer config={forecastChartConfig} className="min-h-[340px] w-full">
-            <LineChart data={demandForecast}>
-              <CartesianGrid vertical={false} />
-              <XAxis axisLine={false} dataKey="week" tickLine={false} tickMargin={10} />
-              <YAxis axisLine={false} tickLine={false} width={38} />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <ChartLegend content={<ChartLegendContent />} />
+    <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+      <Panel title="Demand forecast" description="Predicted vs actual weekly units">
+        <div className="h-[340px] min-w-0 px-2 py-4">
+          <ResponsiveContainer height="100%" width="100%">
+            <LineChart data={[...demandForecast]} margin={{ top: 4, right: 16, left: 8, bottom: 0 }}>
+              <CartesianGrid stroke={chartGrid} vertical={false} />
+              <XAxis
+                axisLine={false}
+                dataKey="week"
+                tickLine={false}
+                tickMargin={8}
+                stroke={chartAxis}
+                fontSize={11}
+              />
+              <YAxis
+                axisLine={false}
+                tickLine={false}
+                width={32}
+                stroke={chartAxis}
+                fontSize={11}
+              />
               <Line
                 dataKey="actual"
                 dot={false}
                 stroke="var(--color-actual)"
-                strokeWidth={2}
+                strokeWidth={1.5}
                 type="monotone"
               />
               <Line
                 dataKey="forecast"
                 dot={false}
                 stroke="var(--color-forecast)"
-                strokeDasharray="6 4"
-                strokeWidth={2}
+                strokeDasharray="4 3"
+                strokeWidth={1.5}
                 type="monotone"
               />
             </LineChart>
-          </ChartContainer>
-        </CardContent>
-      </Card>
-      <div className="flex flex-col gap-4">
-        {alertFeed.map((alert) => (
-          <Alert
-            key={alert.title}
-            variant={alert.severity === "critical" ? "destructive" : "default"}
-            className="border-border/70 bg-card/85 backdrop-blur"
-          >
-            <BellRingIcon />
-            <AlertTitle>{alert.title}</AlertTitle>
-            <AlertDescription>{alert.detail}</AlertDescription>
-          </Alert>
+          </ResponsiveContainer>
+        </div>
+      </Panel>
+
+      <Panel title="Forecast alerts" description="Items flagged by predictive analysis">
+        <ul className="divide-y divide-border">
+          {alertFeed.length === 0 ? (
+            <li className="px-5 py-6 text-sm text-muted-foreground">No active alerts.</li>
+          ) : (
+            alertFeed.map((alert) => (
+              <li key={alert.title} className="flex flex-col gap-1.5 px-5 py-4">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-foreground">{alert.title}</span>
+                  <Badge variant={severityVariant(alert.severity)}>{alert.severity}</Badge>
+                </div>
+                <p className="text-xs leading-relaxed text-muted-foreground">{alert.detail}</p>
+              </li>
+            ))
+          )}
+        </ul>
+      </Panel>
+    </div>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="flex flex-col gap-2 bg-background px-5 py-4">
+            <Skeleton className="h-3 w-24 rounded" />
+            <Skeleton className="h-7 w-32 rounded" />
+            <Skeleton className="h-3 w-16 rounded" />
+          </div>
         ))}
+      </div>
+      <div className="grid gap-6 xl:grid-cols-[1.6fr_1fr]">
+        <Skeleton className="h-[360px] rounded-lg" />
+        <Skeleton className="h-[360px] rounded-lg" />
       </div>
     </div>
   );
 }
 
-function DashboardLoadingState() {
+function DashboardAuthRequiredState() {
   return (
-    <div className="flex flex-col gap-4">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Skeleton className="h-28 rounded-none" />
-        <Skeleton className="h-28 rounded-none" />
-        <Skeleton className="h-28 rounded-none" />
-        <Skeleton className="h-28 rounded-none" />
+    <div className="flex min-h-[420px] flex-col items-center justify-center gap-3 rounded-lg border border-border bg-card px-8 py-12 text-center">
+      <CircleAlertIcon className="size-6 text-muted-foreground" />
+      <h2 className="text-lg font-semibold text-foreground">Sign in to view the command deck</h2>
+      <p className="max-w-md text-sm text-muted-foreground">
+        The TechAssure operational dashboard needs an authenticated operator to load live sales,
+        inventory, supplier, and forecast data from Convex.
+      </p>
+      <div className="flex gap-2 pt-2">
+        <Link
+          href={"/sign-in" as Route}
+          className="inline-flex h-8 items-center justify-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/80"
+        >
+          Sign in
+        </Link>
+        <Link
+          href={"/" as Route}
+          className="inline-flex h-8 items-center justify-center rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+        >
+          Back to overview
+        </Link>
       </div>
-      <div className="grid gap-4 xl:grid-cols-[1.6fr_1fr]">
-        <Skeleton className="min-h-[320px] rounded-none" />
-        <div className="grid gap-4">
-          <Skeleton className="h-36 rounded-none" />
-          <Skeleton className="h-36 rounded-none" />
-        </div>
+    </div>
+  );
+}
+
+function DashboardErrorState({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="flex min-h-[420px] flex-col items-center justify-center gap-3 rounded-lg border border-border bg-card px-8 py-12 text-center">
+      <CircleAlertIcon className="size-6 text-muted-foreground" />
+      <h2 className="text-lg font-semibold text-foreground">Live data could not be loaded</h2>
+      <p className="max-w-md text-sm text-muted-foreground">
+        We could not reach the TechAssure Convex deployment. Check the deployment URL and Clerk
+        JWT issuer configuration, then retry.
+      </p>
+      <div className="flex gap-2 pt-2">
+        <Button onClick={onRetry}>Retry</Button>
+        <Link
+          href={"/" as Route}
+          className="inline-flex h-8 items-center justify-center rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+        >
+          Back to overview
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function DashboardEmptyState({
+  onSeed,
+  seeding,
+}: {
+  onSeed: () => void;
+  seeding: boolean;
+}) {
+  return (
+    <div className="flex min-h-[420px] flex-col items-center justify-center gap-4 rounded-lg border border-dashed border-border bg-card px-8 py-16 text-center">
+      <div className="flex size-12 items-center justify-center rounded-full border border-border bg-background">
+        <PackageSearchIcon className="size-5 text-muted-foreground" />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <h2 className="text-lg font-semibold text-foreground">Workspace is empty</h2>
+        <p className="max-w-md text-sm text-muted-foreground">
+          No products, suppliers or sales yet. Seed demo data to explore the dashboard.
+          The seed only runs once; the dashboard rebuilds its forecasts from then on.
+        </p>
+      </div>
+      <div className="flex gap-2 pt-1">
+        <Button disabled={seeding} onClick={onSeed}>
+          {seeding ? (
+            <Loader2Icon className="size-3.5 animate-spin" data-icon="inline-start" />
+          ) : (
+            <SparklesIcon className="size-3.5" data-icon="inline-start" />
+          )}
+          {seeding ? "Loading demo data…" : "Seed demo data"}
+        </Button>
       </div>
     </div>
   );
@@ -615,32 +693,6 @@ type UserRow = {
   companyName: string;
 };
 
-type OperationsConsoleData = {
-  products: readonly {
-    sku: string;
-    name: string;
-    supplier: string;
-    onHand: number;
-    unitPrice: number;
-    status: "healthy" | "watch" | "critical";
-  }[];
-  suppliers: readonly {
-    name: string;
-    averageLeadDays: number;
-    fillRate: number;
-    reliability: number;
-    openOrders: number;
-    nextDelivery: string;
-  }[];
-  recentActivity: readonly {
-    id: string;
-    kind: "sale" | "receipt" | "supplier";
-    title: string;
-    detail: string;
-    createdAt: string;
-  }[];
-};
-
 function RoleManagementPanel({
   users,
   onUpdateRole,
@@ -651,393 +703,64 @@ function RoleManagementPanel({
   pendingUserId: Doc<"users">["_id"] | null;
 }) {
   return (
-    <Card className="border border-border/70 bg-card/92">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-sm">
-          <UsersIcon className="size-4" />
-          Operator roles
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3">
-        {!users ? (
-          <>
-            <Skeleton className="h-16 rounded-none" />
-            <Skeleton className="h-16 rounded-none" />
-          </>
-        ) : users.length === 0 ? (
-          <div className="border border-border/70 bg-background/55 p-4 text-sm text-muted-foreground">
-            No authenticated operators synced yet.
-          </div>
-        ) : (
-          users.map((user) => (
-            <div
-              key={user._id}
-              className="flex flex-col gap-3 border border-border/70 bg-background/55 p-4 md:flex-row md:items-center md:justify-between"
-            >
-              <div className="flex flex-col gap-1">
-                <div className="font-medium">{user.name}</div>
-                <div className="text-xs text-muted-foreground">
-                  {user.email ?? "No email"} · {user.companyName}
+    <Panel
+      title="Operator roles"
+      description="Manage which capabilities each team member can access"
+    >
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Operator</TableHead>
+            <TableHead>Company</TableHead>
+            <TableHead className="text-right">Role</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {!users ? (
+            <TableRow>
+              <TableCell colSpan={3}>
+                <div className="flex flex-col gap-2 py-2">
+                  <Skeleton className="h-4 w-full rounded" />
+                  <Skeleton className="h-4 w-3/4 rounded" />
                 </div>
-              </div>
-              <Select
-                disabled={pendingUserId === user._id}
-                value={user.role}
-                onValueChange={(value) => onUpdateRole(user._id, value as DashboardViewer["role"])}
-              >
-                <SelectTrigger className="w-full md:w-44">
-                  <SelectValue placeholder="Select role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem value="manager">Manager</SelectItem>
-                    <SelectItem value="analyst">Analyst</SelectItem>
-                    <SelectItem value="operations">Operations</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-          ))
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function OperationsConsolePanel({
-  consoleData,
-  pendingAction,
-  onRecordSale,
-  onReceiveStock,
-}: {
-  consoleData: OperationsConsoleData | undefined;
-  pendingAction: "sale" | "receipt" | null;
-  onRecordSale: (args: {
-    sku: string;
-    quantity: number;
-    channel: "retail" | "online" | "service";
-  }) => Promise<void>;
-  onReceiveStock: (args: {
-    sku: string;
-    quantity: number;
-    supplierName: string;
-    leadDays: number;
-    fillRate: number;
-    nextDelivery?: string;
-  }) => Promise<void>;
-}) {
-  const [saleSku, setSaleSku] = useState("");
-  const [saleQty, setSaleQty] = useState("1");
-  const [saleChannel, setSaleChannel] = useState<"retail" | "online" | "service">("retail");
-
-  const [receiptSku, setReceiptSku] = useState("");
-  const [receiptQty, setReceiptQty] = useState("1");
-  const [receiptSupplier, setReceiptSupplier] = useState("");
-  const [receiptLeadDays, setReceiptLeadDays] = useState("");
-  const [receiptFillRate, setReceiptFillRate] = useState("");
-  const [receiptNextDelivery, setReceiptNextDelivery] = useState("");
-
-  const selectedReceiptProduct = useMemo(
-    () => consoleData?.products.find((product) => product.sku === receiptSku),
-    [consoleData, receiptSku]
-  );
-
-  const selectedSupplier = useMemo(
-    () => consoleData?.suppliers.find((supplier) => supplier.name === receiptSupplier),
-    [consoleData, receiptSupplier]
-  );
-
-  useEffect(() => {
-    if (!consoleData?.products.length) {
-      return;
-    }
-    setSaleSku((current) => current || consoleData.products[0]!.sku);
-    setReceiptSku((current) => current || consoleData.products[0]!.sku);
-  }, [consoleData]);
-
-  useEffect(() => {
-    if (!selectedReceiptProduct) {
-      return;
-    }
-    setReceiptSupplier(selectedReceiptProduct.supplier);
-  }, [selectedReceiptProduct]);
-
-  useEffect(() => {
-    if (!selectedSupplier) {
-      return;
-    }
-    setReceiptLeadDays(String(selectedSupplier.averageLeadDays));
-    setReceiptFillRate(String(selectedSupplier.fillRate));
-    setReceiptNextDelivery(selectedSupplier.nextDelivery);
-  }, [selectedSupplier]);
-
-  return (
-    <Card className="border border-border/70 bg-card/92">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-sm">
-          <ShoppingCartIcon className="size-4" />
-          Operations console
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        {!consoleData ? (
-          <>
-            <Skeleton className="h-44 rounded-none" />
-            <Skeleton className="h-44 rounded-none" />
-            <Skeleton className="h-28 rounded-none" />
-          </>
-        ) : (
-          <>
-            <div className="grid gap-4 xl:grid-cols-2">
-              <Card className="border border-border/70 bg-background/55">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-sm">
-                    <ShoppingCartIcon className="size-4" />
-                    Record sale
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <form
-                    className="flex flex-col gap-3"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      const quantity = Number(saleQty);
-                      if (!saleSku || !Number.isFinite(quantity) || quantity <= 0) {
-                        toast.error("Enter a valid product and quantity");
-                        return;
-                      }
-                      void onRecordSale({ sku: saleSku, quantity, channel: saleChannel }).then(() =>
-                        setSaleQty("1")
-                      );
-                    }}
-                  >
-                    <div className="flex flex-col gap-1.5">
-                      <Label htmlFor="sale-sku">Product</Label>
-                      <Select value={saleSku} onValueChange={(value) => setSaleSku(value ?? "")}>
-                        <SelectTrigger id="sale-sku">
-                          <SelectValue placeholder="Choose a product" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectGroup>
-                            {consoleData.products.map((product) => (
-                              <SelectItem key={product.sku} value={product.sku}>
-                                {product.name} · {product.onHand} on hand
-                              </SelectItem>
-                            ))}
-                          </SelectGroup>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <div className="flex flex-col gap-1.5">
-                        <Label htmlFor="sale-qty">Quantity</Label>
-                        <Input
-                          id="sale-qty"
-                          min="1"
-                          step="1"
-                          type="number"
-                          value={saleQty}
-                          onChange={(event) => setSaleQty(event.target.value)}
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1.5">
-                        <Label htmlFor="sale-channel">Channel</Label>
-                        <Select
-                          value={saleChannel}
-                          onValueChange={(value) =>
-                            setSaleChannel(value as "retail" | "online" | "service")
-                          }
-                        >
-                          <SelectTrigger id="sale-channel">
-                            <SelectValue placeholder="Choose a channel" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectGroup>
-                              <SelectItem value="retail">Retail</SelectItem>
-                              <SelectItem value="online">Online</SelectItem>
-                              <SelectItem value="service">Service</SelectItem>
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <Button disabled={pendingAction !== null} type="submit">
-                      <ShoppingCartIcon data-icon="inline-start" />
-                      {pendingAction === "sale" ? "Recording sale..." : "Commit sale"}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-
-              <Card className="border border-border/70 bg-background/55">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-sm">
-                    <PackagePlusIcon className="size-4" />
-                    Receive stock
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <form
-                    className="flex flex-col gap-3"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      const quantity = Number(receiptQty);
-                      const leadDays = Number(receiptLeadDays);
-                      const fillRate = Number(receiptFillRate);
-                      if (
-                        !receiptSku ||
-                        !receiptSupplier ||
-                        !Number.isFinite(quantity) ||
-                        !Number.isFinite(leadDays) ||
-                        !Number.isFinite(fillRate) ||
-                        quantity <= 0
-                      ) {
-                        toast.error("Enter valid stock receipt details");
-                        return;
-                      }
-                      void onReceiveStock({
-                        sku: receiptSku,
-                        quantity,
-                        supplierName: receiptSupplier,
-                        leadDays,
-                        fillRate,
-                        nextDelivery: receiptNextDelivery || undefined,
-                      }).then(() => setReceiptQty("1"));
-                    }}
-                  >
-                    <div className="flex flex-col gap-1.5">
-                      <Label htmlFor="receipt-sku">Product</Label>
-                      <Select value={receiptSku} onValueChange={(value) => setReceiptSku(value ?? "")}>
-                        <SelectTrigger id="receipt-sku">
-                          <SelectValue placeholder="Choose a product" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectGroup>
-                            {consoleData.products.map((product) => (
-                              <SelectItem key={product.sku} value={product.sku}>
-                                {product.name} · {product.supplier}
-                              </SelectItem>
-                            ))}
-                          </SelectGroup>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <div className="flex flex-col gap-1.5">
-                        <Label htmlFor="receipt-qty">Units received</Label>
-                        <Input
-                          id="receipt-qty"
-                          min="1"
-                          step="1"
-                          type="number"
-                          value={receiptQty}
-                          onChange={(event) => setReceiptQty(event.target.value)}
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1.5">
-                        <Label htmlFor="receipt-supplier">Supplier</Label>
-                        <Select
-                          value={receiptSupplier}
-                          onValueChange={(value) => setReceiptSupplier(value ?? "")}
-                        >
-                          <SelectTrigger id="receipt-supplier">
-                            <SelectValue placeholder="Choose a supplier" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectGroup>
-                              {consoleData.suppliers.map((supplier) => (
-                                <SelectItem key={supplier.name} value={supplier.name}>
-                                  {supplier.name}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="grid gap-3 md:grid-cols-3">
-                      <div className="flex flex-col gap-1.5">
-                        <Label htmlFor="receipt-lead">Lead days</Label>
-                        <Input
-                          id="receipt-lead"
-                          min="1"
-                          step="0.5"
-                          type="number"
-                          value={receiptLeadDays}
-                          onChange={(event) => setReceiptLeadDays(event.target.value)}
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1.5">
-                        <Label htmlFor="receipt-fill">Fill rate %</Label>
-                        <Input
-                          id="receipt-fill"
-                          max="100"
-                          min="1"
-                          step="1"
-                          type="number"
-                          value={receiptFillRate}
-                          onChange={(event) => setReceiptFillRate(event.target.value)}
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1.5">
-                        <Label htmlFor="receipt-next">Next delivery</Label>
-                        <Input
-                          id="receipt-next"
-                          placeholder="Fri 16:00"
-                          value={receiptNextDelivery}
-                          onChange={(event) => setReceiptNextDelivery(event.target.value)}
-                        />
-                      </div>
-                    </div>
-                    <Button disabled={pendingAction !== null} type="submit" variant="outline">
-                      <PackagePlusIcon data-icon="inline-start" />
-                      {pendingAction === "receipt" ? "Posting receipt..." : "Post stock receipt"}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            </div>
-
-            <Card className="border border-border/70 bg-background/55">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-sm">
-                  <Clock3Icon className="size-4" />
-                  Recent activity
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-3">
-                {consoleData.recentActivity.length === 0 ? (
-                  <div className="border border-border/70 bg-card/70 p-4 text-sm text-muted-foreground">
-                    No activity yet.
+              </TableCell>
+            </TableRow>
+          ) : users.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={3} className="py-6 text-center text-sm text-muted-foreground">
+                No authenticated operators synced yet.
+              </TableCell>
+            </TableRow>
+          ) : (
+            users.map((user) => (
+              <TableRow key={user._id}>
+                <TableCell>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-medium text-foreground">{user.name}</span>
+                    <span className="text-xs text-muted-foreground">{user.email ?? "—"}</span>
                   </div>
-                ) : (
-                  consoleData.recentActivity.map((event) => (
-                    <div
-                      key={event.id}
-                      className="flex flex-col gap-2 border border-border/70 bg-card/70 p-3 md:flex-row md:items-start md:justify-between"
-                    >
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{event.title}</span>
-                          <Badge variant="outline">{event.kind}</Badge>
-                        </div>
-                        <div className="text-xs text-muted-foreground">{event.detail}</div>
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {new Date(event.createdAt).toLocaleString("en-US", {
-                          dateStyle: "medium",
-                          timeStyle: "short",
-                        })}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
-          </>
-        )}
-      </CardContent>
-    </Card>
+                </TableCell>
+                <TableCell className="text-muted-foreground">{user.companyName}</TableCell>
+                <TableCell className="text-right">
+                  <select
+                    aria-label={`Change role for ${user.name}`}
+                    className="rounded-md border border-input bg-background px-2 py-1 text-xs font-medium text-foreground"
+                    disabled={pendingUserId === user._id}
+                    onChange={(event) => onUpdateRole(user._id, event.target.value as DashboardViewer["role"])}
+                    value={user.role}
+                  >
+                    <option value="manager">Manager</option>
+                    <option value="cashier">Cashier</option>
+                    <option value="analyst">Analyst</option>
+                    <option value="operations">Operations</option>
+                  </select>
+                </TableCell>
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
+    </Panel>
   );
 }
 
@@ -1054,30 +777,17 @@ export default function DashboardShell({ activeSection, viewer }: DashboardShell
   const syncViewer = useMutation(api.dashboard.syncViewer);
   const ensureSeedData = useMutation(api.dashboard.ensureSeedData);
   const updateUserRole = useMutation(api.dashboard.updateUserRole);
-  const recordSale = useMutation(api.dashboard.recordSale);
-  const receiveStock = useMutation(api.dashboard.receiveStock);
   const initializedRef = useRef(false);
   const [pendingUserId, setPendingUserId] = useState<Doc<"users">["_id"] | null>(null);
-  const [pendingAction, setPendingAction] = useState<"sale" | "receipt" | null>(null);
   const canUseConvexAuth = isLive && isLoaded && !isConvexAuthLoading && isConvexAuthenticated;
 
   const persistedViewer = useQuery(api.dashboard.viewer, canUseConvexAuth ? {} : "skip");
-  const canUsePersistedQueries = canUseConvexAuth && Boolean(persistedViewer);
-  const snapshot = useQuery(api.dashboard.snapshot, canUsePersistedQueries ? {} : "skip");
+  const snapshot = useQuery(api.dashboard.snapshot, canUseConvexAuth ? {} : "skip");
   const effectiveRole = persistedViewer?.role ?? viewer.role;
   const users = useQuery(
     api.dashboard.listUsers,
-    canUsePersistedQueries && effectiveRole === "manager" ? {} : "skip"
+    canUseConvexAuth && effectiveRole === "manager" ? {} : "skip"
   );
-  const operationsConsole = useQuery(
-    api.dashboard.operationsConsole,
-    canUsePersistedQueries ? {} : "skip"
-  );
-  const isLoadingLiveSnapshot =
-    isLive &&
-    (!isLoaded ||
-      isConvexAuthLoading ||
-      (canUseConvexAuth && (!persistedViewer || !snapshot || !operationsConsole)));
 
   useEffect(() => {
     if (!canUseConvexAuth || !user || initializedRef.current) {
@@ -1100,13 +810,27 @@ export default function DashboardShell({ activeSection, viewer }: DashboardShell
           email: user.primaryEmailAddress?.emailAddress,
           companyName,
         });
-        await ensureSeedData({});
       } catch (error) {
+        console.error("[dashboard] bootstrap failed", error);
         toast.error(error instanceof Error ? error.message : "Unable to initialize dashboard");
         initializedRef.current = false;
       }
     })();
-  }, [canUseConvexAuth, ensureSeedData, syncViewer, user]);
+  }, [canUseConvexAuth, syncViewer, user]);
+
+  const [seeding, setSeeding] = useState(false);
+  const handleSeed = async () => {
+    if (seeding) return;
+    setSeeding(true);
+    try {
+      const result = await ensureSeedData({});
+      toast.success(result.seeded ? "Demo data loaded" : "Forecast refreshed");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to seed demo data");
+    } finally {
+      setSeeding(false);
+    }
+  };
 
   const effectiveViewer = useMemo<DashboardViewer>(() => {
     if (!persistedViewer) {
@@ -1123,13 +847,15 @@ export default function DashboardShell({ activeSection, viewer }: DashboardShell
     };
   }, [viewer, persistedViewer]);
 
+  const canSeed = isLive && effectiveViewer.role === "manager";
+
   const liveSnapshot = isLive ? (snapshot as DashboardSnapshot | undefined) : undefined;
-  const displaySnapshot = liveSnapshot ?? demoDashboardSnapshot;
-  const isInitialLoading = isLive && !liveSnapshot;
-  const criticalAlerts = displaySnapshot.alertFeed.filter(
-    (item) => item.severity === "critical"
-  ).length;
-  const showSkeleton = isInitialLoading || isLoadingLiveSnapshot;
+  const isInitialLoading = isLive && !canUseConvexAuth;
+  const criticalAlerts = liveSnapshot
+    ? liveSnapshot.alertFeed.filter((item) => item.severity === "critical").length
+    : 0;
+  const showSkeleton = isLive && (liveSnapshot === undefined || liveSnapshot === null);
+  const displaySnapshot: DashboardSnapshot | undefined = liveSnapshot;
 
   const managementPanel =
     isLive && effectiveViewer.role === "manager" ? (
@@ -1148,39 +874,44 @@ export default function DashboardShell({ activeSection, viewer }: DashboardShell
       />
     ) : undefined;
 
-  const operationsPanel =
-    isLive && effectiveViewer.role !== "analyst" ? (
-      <OperationsConsolePanel
-        consoleData={operationsConsole as OperationsConsoleData | undefined}
-        pendingAction={pendingAction}
-        onRecordSale={async ({ sku, quantity, channel }) => {
-          setPendingAction("sale");
-          try {
-            await recordSale({ sku, quantity, channel });
-            toast.success("Sale recorded and forecasts refreshed");
-          } catch (error) {
-            toast.error(error instanceof Error ? error.message : "Unable to record sale");
-          } finally {
-            setPendingAction(null);
-          }
-        }}
-        onReceiveStock={async ({ sku, quantity, supplierName, leadDays, fillRate, nextDelivery }) => {
-          setPendingAction("receipt");
-          try {
-            await receiveStock({ sku, quantity, supplierName, leadDays, fillRate, nextDelivery });
-            toast.success("Stock receipt posted and forecasts refreshed");
-          } catch (error) {
-            toast.error(error instanceof Error ? error.message : "Unable to post stock receipt");
-          } finally {
-            setPendingAction(null);
-          }
-        }}
-      />
-    ) : undefined;
-
   const content = (() => {
-    if (showSkeleton) {
-      return <DashboardLoadingState />;
+    if (isInitialLoading || showSkeleton) {
+      return <DashboardSkeleton />;
+    }
+
+    if (!displaySnapshot) {
+      return isLive ? (
+        <DashboardErrorState
+          onRetry={() => {
+            window.location.reload();
+          }}
+        />
+      ) : (
+        <DashboardAuthRequiredState />
+      );
+    }
+
+    const workspaceIsEmpty =
+      isLive &&
+      displaySnapshot.salesPerformance.length === 0 &&
+      displaySnapshot.inventoryHealth.length === 0 &&
+      displaySnapshot.supplierSnapshots.length === 0;
+
+    if (workspaceIsEmpty) {
+      return <DashboardEmptyState onSeed={handleSeed} seeding={seeding} />;
+    }
+
+    if (activeSection === "pos") {
+      return (
+        <PosPanel
+          authEnabled={effectiveViewer.authMode === "clerk"}
+          isAuthenticated={isLive}
+          convexReady={canUseConvexAuth}
+          canReceiveStock={
+            effectiveViewer.role === "manager" || effectiveViewer.role === "operations"
+          }
+        />
+      );
     }
 
     switch (activeSection) {
@@ -1193,14 +924,52 @@ export default function DashboardShell({ activeSection, viewer }: DashboardShell
       case "forecast":
         return <ForecastPanel snapshot={displaySnapshot} />;
       default:
-        return (
-          <OverviewPanel
-            managementPanel={managementPanel}
-            operationsPanel={operationsPanel}
-            snapshot={displaySnapshot}
-          />
-        );
+        return <OverviewPanel managementPanel={managementPanel} snapshot={displaySnapshot} />;
     }
+  })();
+
+  const linkButtonClass =
+    "inline-flex h-7 items-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-[0.8rem] font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50";
+  const linkButtonPrimaryClass =
+    "inline-flex h-7 items-center gap-1.5 rounded-md bg-primary px-2.5 text-[0.8rem] font-medium text-primary-foreground transition-colors hover:bg-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50";
+
+  const [seedConfirmArmed, setSeedConfirmArmed] = useState(false);
+  useEffect(() => {
+    if (!seedConfirmArmed) return;
+    const id = setTimeout(() => setSeedConfirmArmed(false), 4000);
+    return () => clearTimeout(id);
+  }, [seedConfirmArmed]);
+
+  const headerAction = (() => {
+    if (activeSection === "pos") {
+      return null;
+    }
+    if (availableSections.includes("inventory") && activeSection !== "inventory") {
+      return (
+        <Link href={"/dashboard/inventory" as Route} className={linkButtonClass}>
+          <PackageSearchIcon className="size-3.5" />
+          Reorder queue
+        </Link>
+      );
+    }
+    if (availableSections.includes("pos")) {
+      return (
+        <Link href={"/dashboard/pos" as Route} className={linkButtonPrimaryClass}>
+          <ShoppingCartIcon className="size-3.5" />
+          Open POS
+          <ArrowRightIcon className="size-3.5" />
+        </Link>
+      );
+    }
+    if (availableSections.includes("forecast") && activeSection !== "forecast") {
+      return (
+        <Link href={"/dashboard/forecast" as Route} className={linkButtonClass}>
+          <BrainCircuitIcon className="size-3.5" />
+          Forecast
+        </Link>
+      );
+    }
+    return null;
   })();
 
   return (
@@ -1208,59 +977,68 @@ export default function DashboardShell({ activeSection, viewer }: DashboardShell
       <AppSidebar
         activeSection={activeSection}
         availableSections={availableSections}
-        criticalAlerts={criticalAlerts}
         viewer={effectiveViewer}
       />
-      <SidebarInset className="border-0">
-        <div className="flex min-h-svh flex-col">
-          <header className="border-b border-border/70 bg-background/88 backdrop-blur">
-            <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 md:px-6 lg:px-8">
-              <div className="flex min-w-0 items-center gap-3">
-                <SidebarTrigger />
-                <div className="flex min-w-0 flex-col">
-                  <span className="font-display text-2xl leading-none text-foreground">
-                    {dashboardSectionLabels[activeSection]}
-                  </span>
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline" className="hidden sm:flex">
-                  <RefreshCcwIcon data-icon="inline-start" />
-                  {liveSnapshot?.dashboardSummary.liveSyncStatus ?? "Syncing"}
-                </Badge>
-                {criticalAlerts > 0 ? (
-                  <Badge variant={severityVariant(displaySnapshot.alertFeed[0]?.severity ?? "info")}>
-                    <CircleAlertIcon data-icon="inline-start" />
-                    {criticalAlerts} alert{criticalAlerts === 1 ? "" : "s"}
-                  </Badge>
-                ) : null}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  render={
-                    <Link
-                      href={
-                        availableSections.includes("inventory")
-                          ? "/dashboard/inventory"
-                          : "/dashboard/forecast"
-                      }
-                    >
-                      <PackageSearchIcon className="size-3.5" />
-                      {availableSections.includes("inventory") ? "Reorder queue" : "Forecast"}
-                    </Link>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-10 flex h-14 items-center justify-between gap-3 border-b border-border bg-background/80 px-5 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex min-w-0 flex-col">
+              <h1 className="truncate text-[15px] font-semibold tracking-tight text-foreground">
+                {dashboardSectionLabels[activeSection]}
+              </h1>
+              <p className="hidden truncate text-xs text-muted-foreground sm:block">
+                {dashboardSectionDescriptions[activeSection]}
+              </p>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            {isLive ? (
+              <Badge variant="outline" className="hidden gap-1.5 sm:flex">
+                <span className="size-1.5 rounded-full bg-emerald-500" />
+                {liveSnapshot?.dashboardSummary.liveSyncStatus ?? "Connecting"}
+              </Badge>
+            ) : null}
+            {criticalAlerts > 0 ? (
+              <Badge variant="destructive" className="gap-1">
+                <AlertTriangleIcon className="size-3" />
+                {criticalAlerts}
+              </Badge>
+            ) : null}
+            {canSeed && activeSection !== "pos" ? (
+              <button
+                aria-label={seedConfirmArmed ? "Confirm seed demo data" : "Seed demo data"}
+                className={
+                  "inline-flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-colors " +
+                  (seedConfirmArmed
+                    ? "border-[color:var(--accent-warm)] bg-[color:var(--accent-warm)]/15 text-[color:var(--accent-warm-foreground)]"
+                    : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground")
+                }
+                disabled={seeding}
+                onClick={() => {
+                  if (!seedConfirmArmed) {
+                    setSeedConfirmArmed(true);
+                    return;
                   }
-                />
-              </div>
-            </div>
-          </header>
-          <main className="techassure-surface relative flex-1 overflow-hidden">
-            <div className="techassure-grid pointer-events-none absolute inset-0 opacity-30" />
-            <div className="relative flex flex-col gap-5 px-4 py-5 md:px-6 lg:px-8">
-              {content}
-            </div>
-          </main>
-        </div>
-      </SidebarInset>
+                  setSeedConfirmArmed(false);
+                  void handleSeed();
+                }}
+                type="button"
+              >
+                {seeding ? (
+                  <Loader2Icon className="size-3 animate-spin" />
+                ) : (
+                  <SparklesIcon className="size-3" />
+                )}
+                {seeding ? "Seeding…" : seedConfirmArmed ? "Click to confirm" : "Seed data"}
+              </button>
+            ) : null}
+            {headerAction}
+          </div>
+        </header>
+        <main className="flex-1 overflow-x-hidden">
+          <div className="mx-auto w-full max-w-7xl px-5 py-6 md:px-8 md:py-8">{content}</div>
+        </main>
+      </div>
     </SidebarProvider>
   );
 }
