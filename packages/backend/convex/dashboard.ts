@@ -1209,3 +1209,90 @@ export const snapshot = query({
     };
   },
 });
+
+export const marketingSnapshot = query({
+  args: {},
+  handler: async (ctx) => {
+    const session = await getSessionUser(ctx);
+    if (!session) {
+      return {
+        monthlyRevenue: 0,
+        monthlyOrders: 0,
+        grossMargin: 0,
+        atRiskSkus: 0,
+        criticalAlertCount: 0,
+        criticalAlertSample: null,
+        fastestSupplierName: null,
+        lowestCoverName: null,
+        topRevenueSkuName: null,
+        forecastAccuracy: 0,
+        supplierCount: 0,
+        productCount: 0,
+      };
+    }
+
+    const [suppliers, products, sales, forecasts] = await Promise.all([
+      ctx.db.query("suppliers").collect(),
+      ctx.db.query("products").collect(),
+      ctx.db.query("sales").collect(),
+      ctx.db.query("forecasts").collect(),
+    ]);
+
+    const sortedMonths = Array.from(new Set(sales.map((sale) => sale.soldAt.slice(0, 7)))).sort();
+    const lastMonth = sortedMonths.at(-1) ?? "";
+    let monthlyRevenue = 0;
+    let monthlyOrders = 0;
+    let marginWeighted = 0;
+    for (const sale of sales) {
+      if (sale.soldAt.slice(0, 7) !== lastMonth) continue;
+      monthlyRevenue += sale.revenue;
+      monthlyOrders += sale.quantity;
+      marginWeighted += sale.revenue * sale.grossMargin;
+    }
+
+    const atRiskSkus = products.filter((product) => product.status !== "healthy").length;
+    const criticalAlerts = products
+      .filter((product) => product.status === "critical")
+      .map((product) => product.name);
+    const fastestSupplier = [...suppliers].sort(
+      (left, right) => left.averageLeadDays - right.averageLeadDays
+    )[0];
+    const lowestCoverProduct = [...products].sort((left, right) => {
+      const leftCover = left.onHand / Math.max(left.weeklyVelocity, 1);
+      const rightCover = right.onHand / Math.max(right.weeklyVelocity, 1);
+      return leftCover - rightCover;
+    })[0];
+
+    const productRevenue = new Map<string, number>();
+    for (const sale of sales) {
+      productRevenue.set(sale.sku, (productRevenue.get(sale.sku) ?? 0) + sale.revenue);
+    }
+    const topRevenueSku = [...products]
+      .map((product) => ({ product, revenue: productRevenue.get(product.sku) ?? 0 }))
+      .sort((left, right) => right.revenue - left.revenue)[0];
+
+    const forecastAccuracyValues: number[] = [];
+    for (const forecast of forecasts) {
+      if (forecast.actualUnits === undefined || forecast.predictedUnits <= 0) continue;
+      forecastAccuracyValues.push(
+        1 - Math.abs(forecast.predictedUnits - forecast.actualUnits) / forecast.predictedUnits
+      );
+    }
+    const forecastAccuracy = average(forecastAccuracyValues);
+
+    return {
+      monthlyRevenue,
+      monthlyOrders,
+      grossMargin: monthlyRevenue > 0 ? marginWeighted / monthlyRevenue : 0,
+      atRiskSkus,
+      criticalAlertCount: criticalAlerts.length,
+      criticalAlertSample: criticalAlerts[0] ?? null,
+      fastestSupplierName: fastestSupplier?.name ?? null,
+      lowestCoverName: lowestCoverProduct?.name ?? null,
+      topRevenueSkuName: topRevenueSku?.product.name ?? null,
+      forecastAccuracy,
+      supplierCount: suppliers.length,
+      productCount: products.length,
+    };
+  },
+});
