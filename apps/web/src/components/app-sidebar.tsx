@@ -1,42 +1,36 @@
 "use client";
 
-import { UserButton } from "@clerk/nextjs";
-import {
-  ActivityIcon,
-  BinaryIcon,
-  BoxesIcon,
-  BrainCircuitIcon,
-  Building2Icon,
-  ChartColumnBigIcon,
-} from "lucide-react";
+import { useClerk } from "@clerk/nextjs";
+import { LogOutIcon } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
   SidebarHeader,
   SidebarMenu,
-  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
-  SidebarSeparator,
   useSidebar,
 } from "@_scaffold/ui/components/sidebar";
 
+import { ActivityIcon, BinaryIcon, BoxesIcon, BrainCircuitIcon, Building2Icon, ChartColumnBigIcon, ShoppingCartIcon } from "lucide-react";
+
+import { Avatar } from "./avatar";
 import { ModeToggle } from "./mode-toggle";
 import type { DashboardViewer } from "@/lib/dashboard-auth";
 import type { DashboardSection } from "@/lib/techassure-demo-data";
 
 const navigation = [
   { id: "overview", label: "Overview", icon: ActivityIcon },
-  { id: "sales", label: "Sales pulse", icon: ChartColumnBigIcon },
+  { id: "pos", label: "Point of sale", icon: ShoppingCartIcon },
+  { id: "sales", label: "Sales", icon: ChartColumnBigIcon },
   { id: "inventory", label: "Inventory", icon: BoxesIcon },
   { id: "suppliers", label: "Suppliers", icon: Building2Icon },
-  { id: "forecast", label: "Forecasts", icon: BrainCircuitIcon },
+  { id: "forecast", label: "Forecast", icon: BrainCircuitIcon },
 ] as const satisfies ReadonlyArray<{
   id: DashboardSection;
   label: string;
@@ -46,94 +40,129 @@ const navigation = [
 type AppSidebarProps = {
   activeSection: DashboardSection;
   availableSections: readonly DashboardSection[];
-  criticalAlerts: number;
   viewer: DashboardViewer;
 };
 
 export default function AppSidebar({
   activeSection,
   availableSections,
-  criticalAlerts,
   viewer,
 }: AppSidebarProps) {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
+  const [mounted, setMounted] = useState(false);
+  const { signOut } = useClerk();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const isLive = viewer.authMode === "clerk" && viewer.isAuthenticated;
+  const showLiveFooter = mounted && isLive;
   const visibleNavigation = navigation.filter((item) => availableSections.includes(item.id));
+  const avatarSeed = viewer.email ?? viewer.name ?? "techassure-demo";
 
   return (
-    <Sidebar collapsible="icon" variant="inset">
-      <SidebarHeader className="overflow-hidden px-2 py-3">
+    <Sidebar collapsible="icon" variant="sidebar" className="border-r border-sidebar-border">
+      <SidebarHeader className="h-14 px-3">
         {collapsed ? (
-          <div className="flex h-8 w-8 items-center justify-center">
-            <BinaryIcon className="size-4 shrink-0 text-sidebar-foreground" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-foreground text-background">
+            <BinaryIcon className="size-3.5" />
           </div>
         ) : (
-          <div className="flex items-center gap-2 pl-1">
-            <BinaryIcon className="size-4 shrink-0 text-sidebar-foreground/60" />
-            <span className="font-display text-lg leading-none text-sidebar-foreground">
+          <div className="flex h-8 items-center gap-2 px-1">
+            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-foreground text-background">
+              <BinaryIcon className="size-3" />
+            </div>
+            <span className="text-[15px] font-semibold tracking-tight text-sidebar-foreground">
               TechAssure
             </span>
           </div>
         )}
       </SidebarHeader>
 
-      <SidebarSeparator />
-
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {visibleNavigation.map((item) => {
-                const active = activeSection === item.id;
-                return (
-                  <SidebarMenuItem key={item.id}>
-                    <SidebarMenuButton
-                      isActive={active}
-                      render={<Link href={`/dashboard/${item.id}`} />}
-                      tooltip={item.label}
-                      className={active ? "" : "opacity-40 hover:opacity-100"}
-                    >
-                      <item.icon />
-                      <span>{item.label}</span>
-                    </SidebarMenuButton>
-                    {item.id === "forecast" && criticalAlerts > 0 ? (
-                      <SidebarMenuBadge>{criticalAlerts}</SidebarMenuBadge>
-                    ) : null}
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+      <SidebarContent className="px-2">
+        <SidebarMenu className="gap-0.5">
+          {visibleNavigation.map((item) => {
+            const active = activeSection === item.id;
+            return (
+              <SidebarMenuItem key={item.id}>
+                <SidebarMenuButton
+                  isActive={active}
+                  render={<Link href={`/dashboard/${item.id}`} />}
+                  tooltip={item.label}
+                  size="sm"
+                  className={
+                    active
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                      : "text-sidebar-foreground/70 hover:text-sidebar-foreground"
+                  }
+                >
+                  <item.icon className="size-4" />
+                  <span>{item.label}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
+        </SidebarMenu>
       </SidebarContent>
 
-      <SidebarSeparator />
-
-      <SidebarFooter className="overflow-hidden px-2 py-3">
+      <SidebarFooter className="border-t border-sidebar-border px-3 py-2">
         {collapsed ? (
           <div className="flex flex-col items-center gap-2">
-            {isLive ? <UserButton /> : null}
+            {showLiveFooter ? (
+              <>
+                <Avatar
+                  seed={avatarSeed}
+                  name={viewer.name}
+                  email={viewer.email}
+                  size={28}
+                />
+                <button
+                  aria-label="Sign out"
+                  className="inline-flex size-7 items-center justify-center rounded-md text-sidebar-foreground/60 transition-colors hover:bg-muted hover:text-foreground"
+                  onClick={() => void signOut()}
+                  type="button"
+                >
+                  <LogOutIcon className="size-3.5" />
+                </button>
+              </>
+            ) : null}
             <ModeToggle />
           </div>
         ) : (
-          <div className="flex min-w-0 items-center justify-between gap-2 pl-1">
-            {isLive ? (
-              <div className="flex min-w-0 items-center gap-2">
-                <UserButton />
-                <div className="flex min-w-0 flex-col">
-                  <span className="truncate text-xs font-medium text-sidebar-foreground">
-                    {viewer.name}
-                  </span>
-                  {viewer.email ? (
-                    <span className="truncate text-[11px] text-sidebar-foreground/40">
-                      {viewer.email}
+          <div className="flex min-w-0 items-center justify-between gap-2">
+            {showLiveFooter ? (
+              <>
+                <div className="flex min-w-0 items-center gap-2">
+                  <Avatar
+                    seed={avatarSeed}
+                    name={viewer.name}
+                    email={viewer.email}
+                    size={28}
+                  />
+                  <div className="flex min-w-0 flex-col">
+                    <span className="truncate text-[13px] font-medium leading-tight text-sidebar-foreground">
+                      {viewer.name}
                     </span>
-                  ) : null}
+                    {viewer.email ? (
+                      <span className="truncate text-[11px] leading-tight text-sidebar-foreground/55">
+                        {viewer.email}
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
+                <button
+                  aria-label="Sign out"
+                  className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-sidebar-foreground/60 transition-colors hover:bg-muted hover:text-foreground"
+                  onClick={() => void signOut()}
+                  type="button"
+                >
+                  <LogOutIcon className="size-3.5" />
+                </button>
+              </>
             ) : (
-              <span className="text-xs text-sidebar-foreground/40">Demo mode</span>
+              <span className="text-[11px] text-sidebar-foreground/55">Demo mode</span>
             )}
             <ModeToggle />
           </div>
