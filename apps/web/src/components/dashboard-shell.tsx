@@ -676,9 +676,11 @@ function DashboardErrorState({ onRetry }: { onRetry: () => void }) {
 function DashboardEmptyState({
   onSeed,
   seeding,
+  canCreate,
 }: {
   onSeed: () => void;
   seeding: boolean;
+  canCreate: boolean;
 }) {
   return (
     <div className="flex min-h-[420px] flex-col items-center justify-center gap-4 rounded-lg border border-dashed border-border bg-card px-8 py-16 text-center">
@@ -688,12 +690,14 @@ function DashboardEmptyState({
       <div className="flex flex-col gap-1.5">
         <h2 className="text-lg font-semibold text-foreground">Workspace is empty</h2>
         <p className="max-w-md text-sm text-muted-foreground">
-          No products, suppliers or sales yet. Seed demo data to explore the dashboard.
-          The seed only runs once; the dashboard rebuilds its forecasts from then on.
+          No products, suppliers or sales yet. Add a supplier and your first
+          product, or seed demo data to explore the dashboard.
         </p>
       </div>
-      <div className="flex gap-2 pt-1">
-        <Button disabled={seeding} onClick={onSeed}>
+      <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+        {canCreate ? <NewSupplierButton canCreate={canCreate} /> : null}
+        {canCreate ? <NewProductButton canCreate={canCreate} /> : null}
+        <Button disabled={seeding} onClick={onSeed} variant="outline">
           {seeding ? (
             <Loader2Icon className="size-3.5 animate-spin" data-icon="inline-start" />
           ) : (
@@ -919,7 +923,15 @@ export default function DashboardShell({ activeSection, viewer }: DashboardShell
       displaySnapshot.supplierSnapshots.length === 0;
 
     if (workspaceIsEmpty) {
-      return <DashboardEmptyState onSeed={handleSeed} seeding={seeding} />;
+      return (
+        <DashboardEmptyState
+          canCreate={
+            effectiveViewer.role === "manager" || effectiveViewer.role === "operations"
+          }
+          onSeed={handleSeed}
+          seeding={seeding}
+        />
+      );
     }
 
     if (activeSection === "pos") {
