@@ -1,12 +1,12 @@
 {
-  "extends": "@_scaffold/config/tsconfig.base.json",
+  "extends": "@tech-assure/config/tsconfig.base.json",
   "compilerOptions": {
     "jsx": "react-jsx",
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "paths": {
-      "@_scaffold/ui/*": ["./src/*"]
-    }
+      "@tech-assure/ui/*": ["./src/*"],
+    },
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules"],
 }

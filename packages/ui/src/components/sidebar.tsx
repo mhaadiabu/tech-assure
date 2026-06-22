@@ -6,23 +6,23 @@ import { useRender } from "@base-ui/react/use-render"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { useIsMobile } from "../hooks/use-mobile"
-import { cn } from "@_scaffold/ui/lib/utils"
-import { Button } from "@_scaffold/ui/components/button"
-import { Input } from "@_scaffold/ui/components/input"
-import { Separator } from "@_scaffold/ui/components/separator"
+import { cn } from "@tech-assure/ui/lib/utils"
+import { Button } from "@tech-assure/ui/components/button"
+import { Input } from "@tech-assure/ui/components/input"
+import { Separator } from "@tech-assure/ui/components/separator"
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@_scaffold/ui/components/sheet"
-import { Skeleton } from "@_scaffold/ui/components/skeleton"
+} from "@tech-assure/ui/components/sheet"
+import { Skeleton } from "@tech-assure/ui/components/skeleton"
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@_scaffold/ui/components/tooltip"
+} from "@tech-assure/ui/components/tooltip"
 import { PanelLeftIcon } from "lucide-react"
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"

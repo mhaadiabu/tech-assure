@@ -9,9 +9,9 @@
     "start": "next start"
   },
   "dependencies": {
-    "@_scaffold/backend": "workspace:*",
-    "@_scaffold/env": "workspace:*",
-    "@_scaffold/ui": "workspace:*",
+    "@tech-assure/backend": "workspace:*",
+    "@tech-assure/env": "workspace:*",
+    "@tech-assure/ui": "workspace:*",
     "@base-ui/react": "^1.4.1",
     "@clerk/nextjs": "catalog:",
     "@mhaadi/svg": "^0.2.1",
@@ -34,7 +34,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@_scaffold/config": "workspace:*",
+    "@tech-assure/config": "workspace:*",
     "@tailwindcss/postcss": "catalog:",
     "@types/node": "^20",
     "@types/react": "catalog:",

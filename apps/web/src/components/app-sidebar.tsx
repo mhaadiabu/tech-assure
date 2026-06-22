@@ -15,7 +15,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
   useSidebar,
-} from "@_scaffold/ui/components/sidebar";
+} from "@tech-assure/ui/components/sidebar";
 
 import { ActivityIcon, BinaryIcon, BoxesIcon, BrainCircuitIcon, Building2Icon, ChartColumnBigIcon, ShoppingCartIcon } from "lucide-react";
 

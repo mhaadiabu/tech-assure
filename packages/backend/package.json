@@ -1,5 +1,5 @@
 {
-  "name": "@_scaffold/backend",
+  "name": "@tech-assure/backend",
   "version": "1.0.0",
   "description": "",
   "license": "ISC",
@@ -15,7 +15,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@_scaffold/config": "workspace:*",
+    "@tech-assure/config": "workspace:*",
     "@types/node": "^24.3.0",
     "typescript": "catalog:"
   }

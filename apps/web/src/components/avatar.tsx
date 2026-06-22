@@ -3,7 +3,7 @@
 import { SVG } from "@mhaadi/svg/react";
 import { useMemo } from "react";
 
-import { cn } from "@_scaffold/ui/lib/utils";
+import { cn } from "@tech-assure/ui/lib/utils";
 
 const FALLBACK_PALETTE = [
   "oklch(0.72 0.13 35)",

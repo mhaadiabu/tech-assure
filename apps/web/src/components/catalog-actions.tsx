@@ -4,10 +4,10 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { PlusIcon } from "lucide-react";
 
-import { api } from "@_scaffold/backend/convex/_generated/api";
-import { Button } from "@_scaffold/ui/components/button";
-import { Input } from "@_scaffold/ui/components/input";
-import { Label } from "@_scaffold/ui/components/label";
+import { api } from "@tech-assure/backend/convex/_generated/api";
+import { Button } from "@tech-assure/ui/components/button";
+import { Input } from "@tech-assure/ui/components/input";
+import { Label } from "@tech-assure/ui/components/label";
 import { toast } from "sonner";
 
 type SupplierOption = {

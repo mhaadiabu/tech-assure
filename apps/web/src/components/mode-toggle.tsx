@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@_scaffold/ui/components/button";
+import { Button } from "@tech-assure/ui/components/button";
 import { Monitor, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";

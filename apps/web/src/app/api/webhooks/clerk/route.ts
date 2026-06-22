@@ -2,8 +2,8 @@ import { verifyWebhook } from "@clerk/nextjs/webhooks";
 import type { NextRequest } from "next/server";
 import { fetchMutation } from "convex/nextjs";
 
-import { api } from "@_scaffold/backend/convex/_generated/api";
-import { env } from "@_scaffold/env/web";
+import { api } from "@tech-assure/backend/convex/_generated/api";
+import { env } from "@tech-assure/env/web";
 
 export const dynamic = "force-dynamic";
 

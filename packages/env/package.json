@@ -1,5 +1,5 @@
 {
-  "name": "@_scaffold/env",
+  "name": "@tech-assure/env",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -15,7 +15,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@_scaffold/config": "workspace:*",
+    "@tech-assure/config": "workspace:*",
     "@types/node": "catalog:",
     "typescript": "catalog:"
   }

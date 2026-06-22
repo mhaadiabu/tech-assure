@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
 
-import { cn } from "@_scaffold/ui/lib/utils";
-import { env } from "@_scaffold/env/web";
+import { cn } from "@tech-assure/ui/lib/utils";
+import { env } from "@tech-assure/env/web";
 
 import "../index.css";
 import Providers from "@/components/providers";
@@ -12,7 +12,8 @@ import { ThemeProvider } from "@/components/theme-provider";
 
 export const metadata: Metadata = {
   title: "TechAssure Command Deck",
-  description: "Real-time analytics and predictive insights for TechAssure's retail operations.",
+  description:
+    "Real-time analytics and predictive insights for TechAssure's retail operations.",
 };
 
 export default function RootLayout({
@@ -23,7 +24,12 @@ export default function RootLayout({
   const clerkEnabled = Boolean(env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
   const app = (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="system"
+      enableSystem
+      disableTransitionOnChange
+    >
       <Providers>{children}</Providers>
     </ThemeProvider>
   );

@@ -1,7 +1,7 @@
 import type { Route } from "next";
 import Link from "next/link";
 
-import { Button } from "@_scaffold/ui/components/button";
+import { Button } from "@tech-assure/ui/components/button";
 
 export const dynamic = "force-static";
 

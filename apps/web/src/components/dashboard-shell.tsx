@@ -4,8 +4,8 @@ import type { Route } from "next";
 import Link from "next/link";
 
 import { useUser } from "@clerk/nextjs";
-import { api } from "@_scaffold/backend/convex/_generated/api";
-import type { Doc } from "@_scaffold/backend/convex/_generated/dataModel";
+import { api } from "@tech-assure/backend/convex/_generated/api";
+import type { Doc } from "@tech-assure/backend/convex/_generated/dataModel";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import {
   ActivityIcon,
@@ -38,9 +38,9 @@ import {
 } from "recharts";
 import { toast } from "sonner";
 
-import { Badge } from "@_scaffold/ui/components/badge";
-import { Button } from "@_scaffold/ui/components/button";
-import { Skeleton } from "@_scaffold/ui/components/skeleton";
+import { Badge } from "@tech-assure/ui/components/badge";
+import { Button } from "@tech-assure/ui/components/button";
+import { Skeleton } from "@tech-assure/ui/components/skeleton";
 import {
   Table,
   TableBody,
@@ -48,12 +48,12 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@_scaffold/ui/components/table";
+} from "@tech-assure/ui/components/table";
 
 import AppSidebar from "./app-sidebar";
 import { NewProductButton, NewSupplierButton } from "./catalog-actions";
 import PosPanel from "./pos-panel";
-import { SidebarProvider } from "@_scaffold/ui/components/sidebar";
+import { SidebarProvider } from "@tech-assure/ui/components/sidebar";
 import {
   dashboardSectionDescriptions,
   dashboardSectionLabels,

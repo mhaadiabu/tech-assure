@@ -18,11 +18,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { Badge } from "@_scaffold/ui/components/badge";
-import { Button } from "@_scaffold/ui/components/button";
-import { Input } from "@_scaffold/ui/components/input";
-import { Label } from "@_scaffold/ui/components/label";
-import { Skeleton } from "@_scaffold/ui/components/skeleton";
+import { Badge } from "@tech-assure/ui/components/badge";
+import { Button } from "@tech-assure/ui/components/button";
+import { Input } from "@tech-assure/ui/components/input";
+import { Label } from "@tech-assure/ui/components/label";
+import { Skeleton } from "@tech-assure/ui/components/skeleton";
 import {
   Table,
   TableBody,
@@ -30,9 +30,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@_scaffold/ui/components/table";
-import { api } from "@_scaffold/backend/convex/_generated/api";
-import { cn } from "@_scaffold/ui/lib/utils";
+} from "@tech-assure/ui/components/table";
+import { api } from "@tech-assure/backend/convex/_generated/api";
+import { cn } from "@tech-assure/ui/lib/utils";
 
 type PosProduct = {
   sku: string;
@@ -124,7 +124,9 @@ function ProductPicker({
         <div className="flex items-center justify-between gap-2">
           <div>
             <h2 className="text-sm font-semibold text-foreground">Catalog</h2>
-            <p className="text-xs text-muted-foreground">Pick a product to ring up</p>
+            <p className="text-xs text-muted-foreground">
+              Pick a product to ring up
+            </p>
           </div>
           <Badge variant="outline" className="text-[10px]">
             {filtered.length} items
@@ -175,7 +177,7 @@ function ProductPicker({
                       "flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors",
                       "hover:bg-muted/40 focus-visible:bg-muted/60 focus-visible:outline-none",
                       "disabled:cursor-not-allowed disabled:opacity-50",
-                      active && "bg-muted/60"
+                      active && "bg-muted/60",
                     )}
                     disabled={lowStock}
                     onClick={() => onSelect(product.sku)}
@@ -186,7 +188,10 @@ function ProductPicker({
                         <span className="truncate font-medium text-foreground">
                           {product.name}
                         </span>
-                        <Badge variant={statusVariant(product.status)} className="text-[10px]">
+                        <Badge
+                          variant={statusVariant(product.status)}
+                          className="text-[10px]"
+                        >
                           {product.status}
                         </Badge>
                       </div>
@@ -209,7 +214,7 @@ function ProductPicker({
                             ? "text-destructive"
                             : tightStock
                               ? "text-amber-600 dark:text-amber-400"
-                              : "text-muted-foreground"
+                              : "text-muted-foreground",
                         )}
                       >
                         {product.onHand} on hand
@@ -247,12 +252,15 @@ function SaleForm({
 }) {
   const numericQuantity = Number(quantity);
   const validQuantity =
-    Number.isFinite(numericQuantity) && numericQuantity > 0 && Number.isInteger(numericQuantity);
+    Number.isFinite(numericQuantity) &&
+    numericQuantity > 0 &&
+    Number.isInteger(numericQuantity);
   const exceedsStock =
     product !== undefined && validQuantity && numericQuantity > product.onHand;
   const disabled = pending || !product || !validQuantity || exceedsStock;
 
-  const total = product && validQuantity ? product.unitPrice * numericQuantity : 0;
+  const total =
+    product && validQuantity ? product.unitPrice * numericQuantity : 0;
 
   return (
     <section className="flex flex-col overflow-hidden rounded-lg border border-border bg-card">
@@ -278,7 +286,9 @@ function SaleForm({
           <>
             <div className="flex items-start justify-between gap-3 rounded-md border border-border bg-background/40 px-3 py-2.5">
               <div className="min-w-0">
-                <div className="truncate text-sm font-medium text-foreground">{product.name}</div>
+                <div className="truncate text-sm font-medium text-foreground">
+                  {product.name}
+                </div>
                 <div className="text-[11px] text-muted-foreground font-mono">
                   {product.sku} · {product.category}
                 </div>
@@ -315,7 +325,9 @@ function SaleForm({
                 <select
                   id="pos-channel"
                   className="h-9 rounded-md border border-input bg-background px-2 text-sm text-foreground"
-                  onChange={(event) => onChannelChange(event.target.value as SaleChannel)}
+                  onChange={(event) =>
+                    onChannelChange(event.target.value as SaleChannel)
+                  }
                   value={channel}
                 >
                   {SALE_CHANNELS.map((c) => (
@@ -343,7 +355,12 @@ function SaleForm({
                 )}
                 {pending ? "Posting..." : "Ring up sale"}
               </Button>
-              <Button disabled={pending} onClick={onReset} type="button" variant="outline">
+              <Button
+                disabled={pending}
+                onClick={onReset}
+                type="button"
+                variant="outline"
+              >
                 Clear
               </Button>
             </div>
@@ -372,12 +389,12 @@ function ReceiveStockPanel({
 
   const selectedProduct = useMemo(
     () => products.find((product) => product.sku === sku),
-    [products, sku]
+    [products, sku],
   );
 
   const selectedSupplier = useMemo(
     () => suppliers.find((supplier) => supplier.name === supplierName),
-    [suppliers, supplierName]
+    [suppliers, supplierName],
   );
 
   const numericQuantity = Number(quantity);
@@ -398,10 +415,18 @@ function ReceiveStockPanel({
     <section className="flex flex-col overflow-hidden rounded-lg border border-border bg-card">
       <header className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
         <div>
-          <h2 className="text-sm font-semibold text-foreground">Receive stock</h2>
-          <p className="text-xs text-muted-foreground">Log a stock receipt from a supplier</p>
+          <h2 className="text-sm font-semibold text-foreground">
+            Receive stock
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Log a stock receipt from a supplier
+          </p>
         </div>
-        <Button onClick={() => setOpen((current) => !current)} size="sm" variant="ghost">
+        <Button
+          onClick={() => setOpen((current) => !current)}
+          size="sm"
+          variant="ghost"
+        >
           {open ? "Hide" : "Show"}
         </Button>
       </header>
@@ -427,8 +452,8 @@ function ReceiveStockPanel({
                 toast.error(
                   error instanceof Error
                     ? error.message
-                    : "Unable to post stock receipt"
-                )
+                    : "Unable to post stock receipt",
+                ),
               )
               .finally(() => setPending(false));
           }}
@@ -501,7 +526,11 @@ function ReceiveStockPanel({
               type="number"
               value={leadDays}
               onChange={(event) => setLeadDays(event.target.value)}
-              placeholder={selectedSupplier ? String(selectedSupplier.averageLeadDays) : "3"}
+              placeholder={
+                selectedSupplier
+                  ? String(selectedSupplier.averageLeadDays)
+                  : "3"
+              }
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -514,11 +543,18 @@ function ReceiveStockPanel({
               type="number"
               value={fillRate}
               onChange={(event) => setFillRate(event.target.value)}
-              placeholder={selectedSupplier ? String(selectedSupplier.fillRate) : "95"}
+              placeholder={
+                selectedSupplier ? String(selectedSupplier.fillRate) : "95"
+              }
             />
           </div>
           <div className="sm:col-span-2">
-            <Button disabled={!valid || pending} type="submit" variant="outline" className="w-full">
+            <Button
+              disabled={!valid || pending}
+              type="submit"
+              variant="outline"
+              className="w-full"
+            >
               {pending ? (
                 <Loader2Icon className="size-3.5 animate-spin" />
               ) : (
@@ -595,9 +631,13 @@ function ActivityPanel({
                     })}
                   </span>
                 </div>
-                <p className="text-xs leading-relaxed text-muted-foreground">{event.detail}</p>
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  {event.detail}
+                </p>
                 {event.actorName ? (
-                  <p className="text-[11px] text-muted-foreground">by {event.actorName}</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    by {event.actorName}
+                  </p>
                 ) : null}
               </li>
             ))}
@@ -624,10 +664,12 @@ function PosAuthRequired() {
   return (
     <div className="flex min-h-[420px] flex-col items-center justify-center gap-3 rounded-lg border border-border bg-card px-8 py-12 text-center">
       <AlertTriangleIcon className="size-6 text-muted-foreground" />
-      <h2 className="text-lg font-semibold text-foreground">Sign in to use the POS</h2>
+      <h2 className="text-lg font-semibold text-foreground">
+        Sign in to use the POS
+      </h2>
       <p className="max-w-md text-sm text-muted-foreground">
-        The TechAssure point of sale needs an authenticated operator to load products and record
-        sales against the Convex dataset.
+        The TechAssure point of sale needs an authenticated operator to load
+        products and record sales against the Convex dataset.
       </p>
       <div className="flex gap-2 pt-2">
         <Link
@@ -670,8 +712,9 @@ export default function PosPanel({
 
   const products = data?.products ?? [];
   const selectedProduct = useMemo(
-    () => products.find((product) => product.sku === selectedSku) ?? products[0],
-    [products, selectedSku]
+    () =>
+      products.find((product) => product.sku === selectedSku) ?? products[0],
+    [products, selectedSku],
   );
 
   if (!canQuery) {
@@ -733,8 +776,10 @@ export default function PosPanel({
                 })
                 .catch((error) =>
                   toast.error(
-                    error instanceof Error ? error.message : "Unable to record sale"
-                  )
+                    error instanceof Error
+                      ? error.message
+                      : "Unable to record sale",
+                  ),
                 )
                 .finally(() => setPending(false));
             }}

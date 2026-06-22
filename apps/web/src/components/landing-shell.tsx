@@ -11,7 +11,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import { useQuery } from "convex/react";
 
-import { api } from "@_scaffold/backend/convex/_generated/api";
+import { api } from "@tech-assure/backend/convex/_generated/api";
 
 import { ModeToggle } from "./mode-toggle";
 import { DashboardPreview } from "./landing/dashboard-preview";

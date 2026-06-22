@@ -13,8 +13,8 @@
   "iconLibrary": "lucide",
   "aliases": {
     "components": "@/components",
-    "utils": "@_scaffold/ui/lib/utils",
-    "ui": "@_scaffold/ui/components",
+    "utils": "@tech-assure/ui/lib/utils",
+    "ui": "@tech-assure/ui/components",
     "lib": "@/lib",
     "hooks": "@/hooks"
   },

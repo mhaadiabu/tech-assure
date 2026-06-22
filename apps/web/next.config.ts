@@ -1,4 +1,4 @@
-import "@_scaffold/env/web";
+import "@tech-assure/env/web";
 import type { NextConfig } from "next";
 import { fileURLToPath } from "node:url";
 

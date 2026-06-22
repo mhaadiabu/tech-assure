@@ -1,9 +1,9 @@
 "use client";
 
 import { useAuth } from "@clerk/nextjs";
-import { env } from "@_scaffold/env/web";
-import { TooltipProvider } from "@_scaffold/ui/components/tooltip";
-import { Toaster } from "@_scaffold/ui/components/sonner";
+import { env } from "@tech-assure/env/web";
+import { TooltipProvider } from "@tech-assure/ui/components/tooltip";
+import { Toaster } from "@tech-assure/ui/components/sonner";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 

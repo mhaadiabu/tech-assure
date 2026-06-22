@@ -27,7 +27,7 @@
       "@/*": [
         "./src/*"
       ],
-      "@_scaffold/ui/*": [
+      "@tech-assure/ui/*": [
         "../../packages/ui/src/*"
       ]
     }
