@@ -2,7 +2,6 @@
 
 import {
   ArrowRightIcon,
-  BinaryIcon,
   CheckIcon,
   PackageIcon,
   PlusIcon,
@@ -13,6 +12,7 @@ import { useQuery } from "convex/react";
 
 import { api } from "@tech-assure/backend/convex/_generated/api";
 
+import { BrandMark } from "./brand-mark";
 import { ModeToggle } from "./mode-toggle";
 import { DashboardPreview } from "./landing/dashboard-preview";
 import { LiveDataBand } from "./landing/live-data-band";
@@ -86,9 +86,7 @@ export default function LandingShell({ authEnabled }: LandingShellProps) {
       <header className="sticky top-0 z-20 border-b border-border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-6 px-5 py-3 sm:px-8">
           <Link href={"/" as Route} className="flex items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-foreground text-background">
-              <BinaryIcon className="size-3" />
-            </div>
+            <BrandMark size={22} className="h-[22px] w-[22px]" />
             <span className="text-[15px] font-semibold tracking-tight">TechAssure</span>
           </Link>
           <div className="flex items-center gap-2">

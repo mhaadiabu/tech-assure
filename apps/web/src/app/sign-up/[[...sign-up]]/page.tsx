@@ -1,10 +1,10 @@
 "use client";
 
 import { SignUp } from "@clerk/nextjs";
-import { BinaryIcon } from "lucide-react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 
+import { BrandMark } from "@/components/brand-mark";
 import { ModeToggle } from "@/components/mode-toggle";
 import { clerkAppearanceLight, clerkAppearanceDark } from "@/lib/clerk-appearance";
 
@@ -16,9 +16,7 @@ export default function SignUpPage() {
     <div className="min-h-svh bg-background text-foreground flex flex-col">
       <header className="flex items-center justify-between border-b border-border/80 px-6 py-4">
         <Link href="/" className="group flex items-center gap-2.5">
-          <div className="flex size-8 items-center justify-center border border-border bg-foreground text-background transition-opacity group-hover:opacity-80">
-            <BinaryIcon className="size-3.5" />
-          </div>
+          <BrandMark size={28} className="h-7 w-7 transition-opacity group-hover:opacity-80" />
           <span className="font-display text-xl leading-none">TechAssure</span>
         </Link>
         <ModeToggle />

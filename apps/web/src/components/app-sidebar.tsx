@@ -17,7 +17,9 @@ import {
   useSidebar,
 } from "@tech-assure/ui/components/sidebar";
 
-import { ActivityIcon, BinaryIcon, BoxesIcon, BrainCircuitIcon, Building2Icon, ChartColumnBigIcon, ShoppingCartIcon } from "lucide-react";
+import { ActivityIcon, BoxesIcon, BrainCircuitIcon, Building2Icon, ChartColumnBigIcon, ShoppingCartIcon } from "lucide-react";
+
+import { BrandMark } from "./brand-mark";
 
 import { Avatar } from "./avatar";
 import { ModeToggle } from "./mode-toggle";
@@ -66,14 +68,12 @@ export default function AppSidebar({
     <Sidebar collapsible="icon" variant="sidebar" className="border-r border-sidebar-border">
       <SidebarHeader className="h-14 px-3">
         {collapsed ? (
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-foreground text-background">
-            <BinaryIcon className="size-3.5" />
+          <div className="flex h-8 w-8 items-center justify-center">
+            <BrandMark size={22} className="h-[22px] w-[22px]" />
           </div>
         ) : (
           <div className="flex h-8 items-center gap-2 px-1">
-            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-foreground text-background">
-              <BinaryIcon className="size-3" />
-            </div>
+            <BrandMark size={22} className="h-[22px] w-[22px]" />
             <span className="text-[15px] font-semibold tracking-tight text-sidebar-foreground">
               TechAssure
             </span>

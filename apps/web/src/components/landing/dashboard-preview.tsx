@@ -31,9 +31,14 @@ export function DashboardPreview({ className }: Props) {
       <div className="grid grid-cols-[140px_1fr]">
         <aside className="border-r border-border bg-muted/30 px-3 py-4">
           <div className="mb-4 flex items-center gap-1.5">
-            <div className="flex size-5 items-center justify-center rounded bg-foreground text-background">
-              <span className="font-mono text-[9px] font-bold">/</span>
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo.png"
+              alt="TechAssure"
+              width={18}
+              height={18}
+              className="size-[18px] dark:invert"
+            />
             <span className="text-[11px] font-semibold tracking-tight">TechAssure</span>
           </div>
           <ul className="flex flex-col gap-0.5 text-[11px]">
