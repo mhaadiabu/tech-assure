@@ -50,7 +50,7 @@ export default function AppSidebar({
   availableSections,
   viewer,
 }: AppSidebarProps) {
-  const { state } = useSidebar();
+  const { state, isMobile, setOpenMobile } = useSidebar();
   const collapsed = state === "collapsed";
   const [mounted, setMounted] = useState(false);
   const { signOut } = useClerk();
@@ -92,6 +92,9 @@ export default function AppSidebar({
                   render={<Link href={`/dashboard/${item.id}`} />}
                   tooltip={item.label}
                   size="sm"
+                  onClick={() => {
+                    if (isMobile) setOpenMobile(false);
+                  }}
                   className={
                     active
                       ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
@@ -121,7 +124,10 @@ export default function AppSidebar({
                 <button
                   aria-label="Sign out"
                   className="inline-flex size-7 items-center justify-center rounded-md text-sidebar-foreground/60 transition-colors hover:bg-muted hover:text-foreground"
-                  onClick={() => void signOut()}
+                  onClick={() => {
+                    if (isMobile) setOpenMobile(false);
+                    void signOut();
+                  }}
                   type="button"
                 >
                   <LogOutIcon className="size-3.5" />
@@ -155,7 +161,10 @@ export default function AppSidebar({
                 <button
                   aria-label="Sign out"
                   className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-sidebar-foreground/60 transition-colors hover:bg-muted hover:text-foreground"
-                  onClick={() => void signOut()}
+                  onClick={() => {
+                    if (isMobile) setOpenMobile(false);
+                    void signOut();
+                  }}
                   type="button"
                 >
                   <LogOutIcon className="size-3.5" />

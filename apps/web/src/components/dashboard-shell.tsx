@@ -53,7 +53,7 @@ import {
 import AppSidebar from "./app-sidebar";
 import { NewProductButton, NewSupplierButton } from "./catalog-actions";
 import PosPanel from "./pos-panel";
-import { SidebarProvider } from "@tech-assure/ui/components/sidebar";
+import { SidebarProvider, SidebarTrigger } from "@tech-assure/ui/components/sidebar";
 import {
   dashboardSectionDescriptions,
   dashboardSectionLabels,
@@ -1028,7 +1028,8 @@ export default function DashboardShell({ activeSection, viewer }: DashboardShell
       />
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-10 flex h-14 items-center justify-between gap-3 border-b border-border bg-background/80 px-5 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="flex min-w-0 items-center gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <SidebarTrigger className="-ml-1 md:hidden" />
             <div className="flex min-w-0 flex-col">
               <h1 className="truncate text-[15px] font-semibold tracking-tight text-foreground">
                 {dashboardSectionLabels[activeSection]}
